@@ -15,6 +15,7 @@ const CoachCore=(()=>{
     const phrase=report.kind==='phrase'||!!report.exercise;
     const out=(code,title,reason,label,action,secondary='')=>({code,title,reason,label:action==='repeat'&&!phrase?'保持范围再练一轮':label,action:action==='repeat'&&!phrase?'continue':action,secondary,evidence,focus:focus(report)});
     if(report.paused)return out('interrupted','这轮有中断，先续练同一内容','暂停会改变时间条件；这一轮不据此判断你的主要困难。','同一内容继续练','repeat');
+    if(report.complete===false)return out('interrupted','这轮尚未完成，先重练原内容','仅保留已经尝试的音，不用这一轮判断主要困难。','重练原内容','repeat');
     if(a.length<4)return out('observe','先积累一小段独立表现',`本轮只有 ${a.length} 个已评估音，暂不判断哪项能力最薄弱。`,'同一内容再练','repeat');
     if(octaves.length>=2&&octaves.length>=wrong.length/2)return out('octave','先把八度和琴键位置对上',`本轮 ${octaves.length} 次错键与目标相差整八度，先固定这些音练键盘位置。`,'固定这几个音练位置','pitch',hints.length>=2?'还有提示使用记录，复练时逐步收起。':'');
     if(wrong.length>=2)return out('pitch','先认准当前音组',`本轮 ${wrong.length} 个起点匹配到了不同音高，先撤去跟拍压力，认准出错的音。`,'缩小音组，不限时练','pitch',timed&&(late.length+misses.length+extras>=2)?'起拍也有不稳定记录，先解决音高，再回到原句。':'');
@@ -27,11 +28,13 @@ const CoachCore=(()=>{
       if(!variation(report))return out('steady','这一句较稳定，再独立确认一次','先保持原句和速度，再独立完成一次。','同一内容再练','repeat');
       return out('transfer','原内容较稳定，检查一个小变化','本轮独立完成较稳定。下一步只换一个已学音，保持节奏和音域。','检查一个小变化','variation');
     }
+    if(hints.length)return out('hint','收起帮助，再独立检查',`本轮 ${a.length-hints.length} 个音未用提示，${hints.length} 个音借助帮助；先检查这些音能否独立认出。`,'同一内容再练','repeat');
     return out('observe',phrase?'保留原内容，再观察一轮':'保持当前范围，再观察一轮',phrase?'当前错误还不足以稳定归为同一原因。先保持内容和速度，再独立完成一次。':'当前错误还不足以稳定归为同一原因。先保持练习任务和音域，再完成一轮。','同一内容再练','repeat');
   }
   function rhythm(report={}){
     const m=report.result?.metrics||{},answers=report.result?.answers||[],seen=Number(m.seen)||0,beat=60000/clampTempo(report.settings?.tempo),unstable=answers.filter(a=>a.hit&&!a.interrupted&&Math.abs(a.delta)>beat*.18).length;
     const result=(code,title,reason,label)=>({code,title,reason,label,action:'rhythm-repeat',evidence:{seen,missed:m.missed||0,extras:m.extras||0,short:m.short||0,long:m.long||0,timing:unstable},secondary:''});
+    if(report.complete===false)return result('interrupted','这轮尚未完成，保留原节奏','仅保留已经尝试的起点；先完整重练，不据此判断主要困难。','重练同一节奏');
     if(report.paused||report.hint)return result('assisted','先收起帮助，再检查同一节奏',report.paused?'本轮曾暂停，不据此判断稳定程度。':'本轮看过拆解提示，下一轮检查独立完成。','重练同一节奏');
     if(seen<4)return result('observe','先完整练一小段',`本轮只有 ${seen} 个可评起点，先保留原题继续观察。`,'重练同一节奏');
     if((m.restExtras||0)>=2)return result('rest','休止时继续数拍，等到下一个起点',`本轮有 ${m.restExtras} 次多按发生在休止内部。先看该小节拆解，再练原题。`,'同一节奏练等待');

@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),{chromium}=require('playwright'),{pathToFileURL}=require('node:url'),path=require('node:path'),fs=require('node:fs');
-const out=path.resolve(__dirname,'../../deliverables/1.5.5_验证');fs.mkdirSync(out,{recursive:true});
+const out=path.resolve(__dirname,'../../deliverables/1.5.6_验证');fs.mkdirSync(out,{recursive:true});
 (async()=>{const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true}),errors=[],network=[];try{
  const ctx=await b.newContext({viewport:{width:1280,height:800}});await ctx.addInitScript(()=>{window.PianoAndroid={midiClock:()=>performance.now(),midiStatus(){PianoInput?.status({state:'connected',detail:'Test piano',devices:[{id:7,port:0,name:'Test piano'}],deviceId:7,port:0,generation:0});}};});
  const p=await ctx.newPage();p.on('pageerror',e=>errors.push(e.stack));p.on('request',r=>{if(/^https?:/.test(r.url()))network.push(r.url());});
@@ -15,7 +15,7 @@ const out=path.resolve(__dirname,'../../deliverables/1.5.5_验证');fs.mkdirSync
  const send=async(type,note)=>p.evaluate(({type,note})=>PianoInput.receive([{type,note,velocity:type==='on'?90:0,channel:0,timeMs:performance.now()}]),{type,note});
  await p.locator('#songKeysToggle').click();await send('on',61);assert(await p.locator('[data-song-key="61"]').evaluate(e=>e.classList.contains('guide-wrong')));await send('off',61);
  let guard=0;while(await p.evaluate(()=>PianoSongs.isActive())){const targets=await p.evaluate(()=>PianoSongs.getState().run.exercise.groups[PianoSongs.getState().run.index].notes.map(n=>n.pitch));for(const n of targets)await send('on',n);for(const n of targets)await send('off',n);assert(++guard<20);}
- assert.equal(await p.evaluate(()=>PianoSongs.getState().records[0].assisted),true);assert.equal(await p.evaluate(()=>PianoSongs.getState().records[0].learning.clean),false);assert.match(await p.locator('#songReport').innerText(),/键位\/指法/);
+ assert.equal(await p.evaluate(()=>PianoSongs.getState().records[0].assisted),true);assert.equal(await p.evaluate(()=>PianoSongs.getState().records[0].learning.clean),false);await p.locator('#songReport .report-details > summary').click();assert.match(await p.locator('#songReport').innerText(),/键位\/指法/);
  // Examination must suppress all key previews and actual finger numbers regardless of saved choices.
  await p.locator('[data-song-mode=exam]').click();await ready();assert.equal(await p.locator('#songKeys .guide-current-r').count(),0);assert.match(await p.locator('#guideCue').innerText(),/独立考核/);await p.locator('#songHandQuick').click();assert(await p.locator('[data-guide-hint=next]').isDisabled());await p.locator('#guideDone').click();
  await p.locator('[data-song-mode=advanced]').click();await ready();await p.locator('#songHandQuick').click();await p.locator('[data-guide-hint=next]').click();await p.locator('#guideDone').click();await ready();await p.locator('#songStart').click();await p.waitForFunction(()=>PianoSongs.isActive());await p.waitForTimeout(4300);await p.locator('#songStop').click();

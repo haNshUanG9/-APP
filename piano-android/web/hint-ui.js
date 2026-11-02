@@ -12,7 +12,7 @@
       let s='';C.ledgerOffsets(n.index-bottom).forEach(k=>s+=`<line x1="${x-17}" x2="${x+17}" y1="${y(bottom+k)}" y2="${y(bottom+k)}" stroke="${color}" stroke-width="2"/>`);
       return s+`<ellipse cx="${x}" cy="${y(n.index)}" rx="10" ry="7" fill="${color}"/><line x1="${x+9}" x2="${x+9}" y1="${y(n.index)}" y2="${y(n.index)-30}" stroke="${color}" stroke-width="2"/>`;
     };
-    h+=draw(m.reference.note,85,'#759f91')+draw(m.target.note,450,'#264c40');
+    h+=draw(m.reference.note,85,'#18212b')+draw(m.target.note,450,'#18212b');
     if(level>=2){
       const points=m.path.map((n,i)=>[m.steps?85+i*365/m.steps:450,y(n.index)]);
       if(m.steps){h+=`<polyline points="${points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#3b8b70" stroke-width="2.4" stroke-dasharray="5 4"/>`;m.path.slice(1,-1).forEach((n,i)=>h+=`<circle cx="${85+(i+1)*365/m.steps}" cy="${y(n.index)}" r="5" fill="white" stroke="#3b8b70" stroke-width="2"/>`);}

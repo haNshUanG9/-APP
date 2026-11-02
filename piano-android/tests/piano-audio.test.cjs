@@ -1,8 +1,8 @@
 /* Real local MP3 decode and playback: octave edges, shifted keys, chords, cancellation and shared consumers. */
 const assert=require('node:assert/strict'),{chromium}=require('playwright'),fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url');
 (async()=>{
- const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true}),errors=[],network=[];
- const out=path.resolve(__dirname,'../../deliverables/1.5.4_验证');fs.mkdirSync(out,{recursive:true});
+ const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--disable-audio-output']}),errors=[],network=[];
+ const out=path.resolve(__dirname,'../../deliverables/1.5.6_验证');fs.mkdirSync(out,{recursive:true});
  try{
   const ctx=await browser.newContext({viewport:{width:1280,height:800}});
   await ctx.addInitScript(()=>{

@@ -23,6 +23,7 @@
   function render(entry,host){
     const a=entry.advice;host.className='coach-card';host.innerHTML=`<div><span class="eyebrow">NEXT STEP · 本轮先解决这一项</span><h3>${esc(a.title)}</h3><p>${esc(a.reason)}</p>${a.secondary?`<small>${esc(a.secondary)}</small>`:''}</div><button class="primary" data-coach-action>${esc(a.label)}${V.icon('arrow')}</button>`;
     host.querySelector('[data-coach-action]').onclick=()=>act(entry);
+    if(host.closest?.('.show-report'))window.PianoFeedback?.present(host.closest('.show-report'),entry.report,entry.kind,entry.advice);
     if(entry.kind==='rhythm'){const origin=window.RhythmCore.normalizePhraseOrigin(entry.report.exercise?.phraseOrigin);if(origin){const button=document.createElement('button');button.textContent='返回原句无提示检查';button.onclick=()=>window.PianoStudy.practiceExercise(origin.exercise,origin.settings);host.appendChild(button);}}
   }
   window.PianoCoach={renderStudy:(report,host)=>render({kind:'study',report,advice:C.study(report)},host),renderRhythm:(report,host)=>render({kind:'rhythm',report,advice:C.rhythm(report)},host),latest:()=>C.latest(H.getDB().study,window.PianoInput?.isMidi()?'midi':'touch'),act,render};

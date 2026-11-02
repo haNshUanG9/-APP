@@ -1,0 +1,84 @@
+/* Shared tablet semantics: hand role, answer help, playback position and outcome are separate. */
+:root{--hand-left:#248b7d;--hand-right:#b77924;--left-soft:#e7f3ef;--right-soft:#fbf0dc;--safe:28px}
+body.tablet-song .app-header{gap:8px;padding:0 20px}
+body.tablet-song .app-header .workspace-title{flex:1;max-width:30%;min-width:130px}
+body.tablet-song .app-header h1{font-size:18px}
+body.tablet-song .app-header>.tablet-song-top{height:52px;min-height:52px;order:3;border:0;flex:none;background:transparent;padding:0;gap:8px}
+body.tablet-song .app-header #workspaceInput{order:4;font-size:12px;padding:4px 8px}
+body.tablet-song .song-mode-tabs{flex:none;margin:0;gap:2px}
+body.tablet-song .song-mode-tabs button{min-height:44px;padding:5px 12px}
+body.tablet-song .song-mode-tabs button strong{font-size:13px}
+body.tablet-song .app-header #songReaderToggle{font-size:13px;padding:4px 8px}
+#songHandQuick[data-hand=left] i{background:var(--hand-left)}#songHandQuick[data-hand=right] i{background:var(--hand-right)}#songHandQuick[data-hand=both] i{background:linear-gradient(var(--hand-left) 50%,var(--hand-right) 50%)}
+body.tablet-song .song-workspace{grid-template-rows:30px minmax(0,1fr) 30px 54px 64px auto}
+#songRoleLegend{grid-row:1;display:flex;align-items:center;gap:18px;padding:0 var(--safe);font-size:13px;color:#61728b;border-bottom:1px solid #edf0f5}
+#songRoleLegend>span.left:before,#songRoleLegend>span.right:before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--hand-left);margin-right:7px}#songRoleLegend>span.right:before{background:var(--hand-right)}#songRoleLegend .role-state{margin-left:auto}
+body.tablet-song #songScoreScroll{grid-row:2;scroll-snap-type:y mandatory;overscroll-behavior:contain;scroll-behavior:auto;overflow-x:hidden}
+body.tablet-song #songScore{padding:0 20px;position:relative}
+.song-system-screen{width:100%;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;gap:24px;overflow:hidden}.song-system-page{width:100%;overflow:hidden;display:flex;align-items:center;justify-content:center}
+body.tablet-song #songScore .song-system-page svg{width:100%;height:100%;display:block;flex:none;overflow:visible}
+.song-playhead{pointer-events:none}.song-measure-band{pointer-events:none}
+body.tablet-song #songGuidePosition{grid-row:3}body.tablet-song #songMeasureNav{grid-row:4;height:54px}body.tablet-song .song-transport{grid-row:5}body.tablet-song #songKeyPane{grid-row:6}
+body.tablet-song #guideMeasures{height:52px}body.tablet-song #guideMeasures button{height:44px;min-height:44px;min-width:48px;font-size:14px}
+body.tablet-song #guideRangePick{min-height:40px;height:40px}
+body.tablet-song .song-status{top:32px;max-width:700px;margin:0 auto}
+body.tablet-song #songGuidePosition #songPosition{font-size:13px}body.tablet-song #guideCue{font-size:13px}
+body.tablet-song #songGuidePanel .guide-label,body.tablet-song #songGuidePanel .guide-note{font-size:13px}
+body.tablet-song #songKeyPane{height:166px}.guide-key-scroll{height:126px}body.tablet-song #songKeys{height:124px}
+body.tablet-song #songReport:not(:empty){top:0;bottom:0;left:0;right:0;padding:24px var(--safe);border-radius:0;border:0}
+body .song-next-advice{background:#edf2fa;border-left-color:#7c97bd;color:#344d73}body .song-next-advice small{color:#596e8a}
+body .song-report .actions{flex-wrap:wrap}body .song-report-title{gap:20px}
+body .song-home-card{background:var(--paper);border-color:var(--line);color:var(--ink)}body .song-home-card h3{color:var(--ink)}
+body .song-home-card p,body .song-home-card small{color:var(--muted)}
+/* Help is sized by its content and anchored away from notation. */
+body.tablet-task .memory-host{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;top:auto!important;max-height:280px!important;max-height:min(280px,36vh)!important;height:auto;min-height:0;width:100%;margin:0!important;box-shadow:none}
+body.tablet-task .lesson-reading.has-memory,body.tablet-task .reading-board.has-memory{grid-template-rows:minmax(120px,1fr) auto 48px}
+body.tablet-task .memory-card{padding:12px 16px}.memory-card-head{gap:10px;flex-wrap:wrap}
+body.tablet-task .memory-card-head button{min-height:44px}body.tablet-task .memory-explanation p{font-size:15px;line-height:1.6}
+body.tablet-task .memory-card-head>strong{display:block;font-size:14px;color:#354e7d}
+body.tablet-task .lesson-stage{overflow:auto;scroll-snap-type:y proximity}
+body.tablet-task .phrase-row{scroll-snap-align:start}
+body .foundation-hint{position:relative;top:auto;right:auto;max-width:none;max-height:160px;flex:none;margin:6px 0}
+body .foundation-layout>.foundation-card{border-radius:12px}
+/* Touch controls and clear keyboard navigation use the same scale across exercises. */
+body.tablet-task .study-keyboard-toolbar,body.tablet-task .keyboard-toolbar{height:46px;min-height:46px}
+body.tablet-task .study-keyboard-toolbar button,body.tablet-task .keyboard-toolbar button{min-height:42px;height:42px;color:#4d6384}
+body.tablet-task .study-keyboard-toolbar .selected{color:#294f9c}
+body.tablet-task #lessonKeys .key.white{flex:1;min-width:0}
+#lessonKeyPrompt{display:flex;align-items:center;gap:8px;white-space:nowrap}#lessonKeyPrompt button{min-width:42px;padding:0;font-size:24px}#lessonKeyPrompt small{font-size:12px;color:var(--muted)}
+body.tablet-task #lessonKeys .c-label{background:transparent;color:#5d6d84;font-weight:500}
+body .menu-pause-note{font-size:13px;color:#596d8b;line-height:1.65;padding:16px 12px;margin:0}
+/* Left/right roles stay consistent in notation, pads and replay timelines. */
+body.tablet-task .rh-pad[data-lane=left]{background:var(--left-soft);border-color:#b4d8ce;color:#236c5e}
+body.tablet-task .rh-pad[data-lane=right]{background:var(--right-soft);border-color:#e4cea8;color:#805924}
+body.tablet-task .rh-pad[data-lane=left] strong{color:#236c5e}body.tablet-task .rh-pad[data-lane=right] strong{color:#805924}
+body.tablet-task .rh-pad[data-lane=left].is-down{background:#bfdfd5}body.tablet-task .rh-pad[data-lane=right].is-down{background:#ebc98f}
+body .midi-test,body .result-summary{background:#edf2fa;color:#465f81;border-color:#cbd8eb}
+body .rh-count-strip span{color:#65778e}body.tablet-task .rh-count-strip span{color:#65778e}
+/* Reports preserve safe margins and present observed facts before percentages. */
+body #studyLesson.show-report{display:block;height:100%;overflow:auto;padding:24px var(--safe);background:var(--canvas)}
+body #studyLesson.show-report>.page-head{margin:0 0 18px;align-items:center}
+body #studyLesson.show-report .page-head h2{font-size:25px}
+body .report-condition{display:flex;align-items:center;gap:18px;padding:14px 18px;margin:12px 0 18px;border:1px solid var(--line);border-left:4px solid #7b94bd;border-radius:10px;background:#f7f9fc;line-height:1.6}
+body .report-condition strong{font-size:16px;white-space:nowrap}body .report-condition span{font-size:14px;color:#526780}
+body .report-condition[data-state=assisted]{border-left-color:#b78b4c}
+body .report-details{margin-top:20px;border-top:1px solid var(--line);padding:8px 0}
+body .report-details>summary{min-height:48px;padding:12px 0;color:#496587;font-size:15px;cursor:pointer}
+body .report-details .table-wrap{margin-top:18px}body .report-details .result-summary{font-size:14px;line-height:1.75;padding:16px}
+body #studyLesson.show-report .coach-card{margin:16px 0;background:var(--paper)}body #studyLesson.show-report .coach-card .eyebrow{display:none}
+body #studyLesson.show-report .stats{margin:18px 0;gap:16px}body #studyLesson.show-report .stats>div{padding:18px}
+/* Unified history is a view of existing records, keeping each task's scoring rules. */
+body #practiceTimeline{margin:20px 0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px}
+.history-heading{display:flex;justify-content:space-between;align-items:center;gap:20px}.history-heading h3{font-size:20px;margin:0}.history-heading span{font-size:13px;color:var(--muted)}
+.history-filters{display:flex;align-items:end;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}.history-filters label{font-size:13px;display:flex;flex-direction:column;gap:6px}.history-filters select{height:44px;min-width:140px}.history-filters>span{font-size:13px;color:var(--muted);margin-left:auto;padding:12px 0}
+.history-entry{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:96px;padding:16px 0;border-bottom:1px solid #e2e7ef}.history-entry>div{display:flex;flex-direction:column;gap:6px}.history-entry small{font-size:12px;color:var(--muted)}.history-entry strong{font-size:16px;font-weight:600}.history-entry span{font-size:13px;color:#596e8b}.history-entry button,.history-entry summary{min-height:44px;white-space:nowrap}.history-categories{margin-top:20px}.history-categories>summary{min-height:48px;padding:12px 0;color:#526d91}
+@media(orientation:portrait){body.tablet-song{--chrome:112px}body.tablet-song .app-header{height:112px;flex-wrap:wrap;align-content:center;gap:0 8px;padding:0 16px}body.tablet-song .app-header .workspace-title{max-width:none;flex:1}body.tablet-song .app-header>#workspaceInput{order:2;height:50px}body.tablet-song .app-header>.tablet-song-top{order:10;flex-basis:100%;height:50px;min-height:50px;justify-content:space-between}body.tablet-song .song-mode-tabs{margin-right:auto}body.tablet-song .song-workspace{grid-template-rows:30px minmax(0,1fr) 42px 54px 68px auto}body.tablet-song #songKeyPane{height:180px}.guide-key-scroll{height:140px}body.tablet-song #songKeys{height:138px}.report-condition{flex-direction:column;align-items:flex-start;gap:5px}body.tablet-task .memory-host{max-height:300px!important}body .history-heading{align-items:flex-start;flex-direction:column;gap:6px}}
+@media(max-width:1100px) and (orientation:landscape){body.tablet-song .app-header #workspaceInputLabel{display:none}body.tablet-song .app-header .workspace-title{max-width:23%}body.tablet-song .song-mode-tabs button{padding:5px 8px}body.tablet-song .app-header{padding:0 12px;gap:5px}}
+@media(max-width:650px){:root{--safe:16px}body.tablet-song .app-header>.tablet-song-top{gap:4px}body.tablet-song .song-mode-tabs button{padding:4px 7px}body.tablet-song .app-header #songReaderToggle{font-size:11px}.history-filters select{min-width:110px}.history-entry{gap:12px}.history-heading span{font-size:12px}}
+
+body.tablet-song #songRoleLegend{font-size:14px;color:#526580}body.tablet-song #songGuidePosition #songPosition,body.tablet-song #guideCue{font-size:14px;color:#526580}.guide-key-legend{font-size:13px!important;color:#526580!important}body.tablet-song #songKeys .guide-key-name{font-size:12px}
+
+body .song-report{background:var(--paper);border-color:var(--line);color:var(--ink)}body .song-report-score,body .song-report-metrics strong{color:#304969}body .song-panel label{color:#536780}
+
+/* Readable at piano distance, with a full touch target for every bar. */
+body .song-report-title p,body .song-report-metrics span{font-size:14px}body .song-report-metrics strong{font-size:26px}body .song-next-advice{font-size:16px}body .song-next-advice p{font-size:15px;line-height:1.7}body .song-next-advice small{font-size:13px}body .song-report-limit{font-size:13px!important}body .song-error-list{font-size:14px}body .song-error-list button{font-size:14px;min-height:48px;background:var(--paper)}body .song-error-list strong{font-size:14px}body .show-report .stat-label{font-size:14px}body .show-report .stat-help{font-size:13px}body.tablet-task .memory-explanation p{font-size:16px}

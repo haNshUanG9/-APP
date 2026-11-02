@@ -23,9 +23,10 @@
  function applyKeys(){const visible=prefs.keys??api.get().input!=='midi';$('songKeys').hidden=!visible;$('songKeyPane').hidden=!visible;document.body.classList.toggle('tablet-song-keys',visible);$('songKeysToggle').innerHTML=icon('piano')+(visible?'收起键盘':'展开键盘');$('songKeysToggle').setAttribute('aria-expanded',String(visible));$('songKeysToggle').setAttribute('aria-controls','songKeyPane');}
  function mount(owner){
   api=owner;const d=api.get();if(!d.song)return;const raw=saved[d.song.id]||{};prefs={hint:['off','current','next'].includes(raw.hint)?raw.hint:'off',fingers:raw.fingers!==false,keys:typeof raw.keys==='boolean'?raw.keys:null};
-  liveBeat=d.beat;lastFrame='';const top=document.querySelector('.tablet-song-top'),transport=document.querySelector('.song-transport');
-  const modes=document.querySelector('.song-mode-tabs');top.insertBefore(modes,$('songReaderToggle'));
-  const quick=document.createElement('button');quick.id='songHandQuick';quick.innerHTML='<i></i>练'+hand(d.settings)+icon('down');top.insertBefore(quick,$('songReaderToggle'));quick.onclick=show;
+  liveBeat=d.beat;lastFrame='';const top=$('songsPage').querySelector('.tablet-song-top'),transport=$('songsPage').querySelector('.song-transport');
+  const modes=$('songsPage').querySelector('.song-mode-tabs');top.insertBefore(modes,$('songReaderToggle'));
+  const quick=document.createElement('button');quick.id='songHandQuick';quick.dataset.hand=d.settings.hand;quick.innerHTML='<i></i>练'+hand(d.settings)+icon('down');top.insertBefore(quick,$('songReaderToggle'));quick.onclick=show;document.querySelectorAll('.app-header > .tablet-song-top').forEach(e=>e.remove());document.querySelector('.app-header').appendChild(top);
+  const role=document.createElement('div');role.id='songRoleLegend';role.innerHTML='<span class="left">左手</span><span class="right">右手</span><span class="role-state"></span>';$('songScoreScroll').before(role);
   const keys=$('songKeys'),keyPane=document.createElement('section');keyPane.id='songKeyPane';keyPane.setAttribute('aria-label','琴键与双手提示');keyPane.innerHTML='<div class="guide-key-legend"><span><i class="left"></i>左手　<i class="right"></i>右手</span><span>实心：当前目标　○ 下一组　描边：实际按键</span></div><div class="guide-key-scroll"></div>';keys.before(keyPane);keyPane.querySelector('.guide-key-scroll').appendChild(keys);$('songKeysToggle').onclick=toggleKeys;
   const pos=document.createElement('div');pos.id='songGuidePosition';pos.innerHTML='<span id="guideCue"></span>';$('songPosition').before(pos);pos.prepend($('songPosition'));document.querySelector('.song-workspace').insertBefore(pos,transport);
   const nav=document.createElement('div');nav.id='songMeasureNav';nav.innerHTML=`<span id="guideRangeLabel">${d.settings.from}—${d.settings.to} 小节</span><div id="guideMeasures" role="group" aria-label="小节定位">${d.song.measures.map(m=>`<button data-measure="${m.index}" aria-label="第 ${m.index} 小节">${esc(m.label||m.index)}</button>`).join('')}</div><button id="guideRangePick" aria-pressed="false">选循环段</button>`;transport.before(nav);
@@ -60,11 +61,12 @@
   if($('guideCue').textContent!==cue)$('guideCue').textContent=cue;
   $('guideSpeed').innerHTML='<b>'+Math.round(s.tempo)+' BPM</b><small>'+Number(s.tempo/d.song.baseTempo).toFixed(2)+'×</small>';
   const locked=d.active&&s.mode!=='listen';$('guideSlower').disabled=$('guideFaster').disabled=$('guideSpeed').disabled=locked||s.mode==='exam';$('songLoopQuick').disabled=s.mode==='exam';$('songHintsQuick').disabled=exam;$('songLoopQuick').classList.toggle('selected',s.loop);
-  const measure=d.song.measures.find(m=>beat<m.end-.0001)||d.song.measures.at(-1);
+  const measure=d.song.measures.find(m=>beat<m.end)||d.song.measures.at(-1);
   for(const b of $('guideMeasures').children){const n=Number(b.dataset.measure),inRange=n>=s.from&&n<=s.to;b.classList.toggle('selected',inRange);b.classList.toggle('now',n===measure.index);b.setAttribute('aria-current',n===measure.index?'true':'false');}
+  const legend=$('songRoleLegend');if(legend){legend.querySelector('.role-state').textContent=s.mode==='listen'?'欣赏 · 跟随播放位置':s.hand==='both'?'双手练习':s.hand==='right'?(s.accompany?'右手练习 · 左手伴奏':'右手练习'):(s.accompany?'左手练习 · 右手伴奏':'左手练习');legend.hidden=exam;}
   api.paint(frame.current,frame.next,!exam&&!s.drill);
  }
  const back=window.PianoBack;window.PianoBack=()=>{if(open){close();return true;}return back?.();};
  document.addEventListener('keydown',e=>{if(!open)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();}else if(e.key==='Tab'){const a=[...$('songGuidePanel').querySelectorAll('button:not(:disabled),select:not(:disabled),input:not(:disabled)')],i=a.indexOf(document.activeElement);e.preventDefault();a[(i+(e.shiftKey?-1:1)+a.length)%a.length]?.focus();}},true);
- window.PianoSongGuide={mount,update,close,isOpen:()=>open,scoreFingers:()=>!!prefs&&prefs.fingers&&prefs.hint!=='off',reset:()=>{api=null;open=false;lastFrame='';},refresh:()=>update(liveBeat)};
+ window.PianoSongGuide={mount,update,close,isOpen:()=>open,scoreFingers:()=>!!prefs&&prefs.fingers&&prefs.hint!=='off',reset:()=>{api=null;open=false;lastFrame='';},refresh:()=>{lastFrame='';update(liveBeat);}};
 })();

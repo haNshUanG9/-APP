@@ -3,7 +3,7 @@
  'use strict';
  const $=id=>document.getElementById(id),body=document.body,rail=document.querySelector('.app-rail');
  const names={today:'识谱练习室',topics:'专项练习',reading:'短句读谱',foundationPage:'循序课程',rhythmPage:'节奏训练',songsPage:'曲谱工作区',progressPage:'进步记录',practice:'自由识谱',studyLesson:'正在练习',help:'学习说明',profiles:'音符档案',mistakes:'错题复习',history:'练习记录',result:'练习结果',notePicker:'选择练习音'};
- let queued=false,lastSize='',navFocus=null;
+ let queued=false,lastSize='',navFocus=null,previewOwner=null;
  const hiddenKeyboards=new Set(),keyboardButton=document.createElement('button');
  keyboardButton.id='workspaceKeyboard';keyboardButton.type='button';keyboardButton.hidden=true;$('workspaceInput').before(keyboardButton);
  function keyboardContext(){
@@ -29,8 +29,8 @@
  const shade=document.createElement('div');shade.id='tabletMenuBackdrop';shade.className='tablet-menu-backdrop';shade.hidden=true;body.appendChild(shade);
  const done=document.createElement('button');done.className='tablet-menu-close';done.textContent='返回工作区';rail.appendChild(done);
  rail.setAttribute('role','dialog');rail.setAttribute('aria-modal','true');rail.setAttribute('aria-label','主菜单');
- function close(){body.classList.remove('tablet-menu-open');shade.hidden=true;$('workspaceMenu').setAttribute('aria-expanded','false');rail.setAttribute('aria-hidden','true');if(navFocus?.isConnected)navFocus.focus({preventScroll:true});}
- function open(){window.PianoSongs?.closePanel?.();navFocus=document.activeElement;window.PianoPause?.();body.classList.add('tablet-menu-open');shade.hidden=false;$('workspaceMenu').setAttribute('aria-expanded','true');rail.removeAttribute('aria-hidden');rail.querySelector('.nav button.active,.nav button')?.focus();}
+ function close(){if(previewOwner){previewOwner.previewNavigation(false);previewOwner=null;}body.classList.remove('tablet-menu-open');shade.hidden=true;$('workspaceMenu').setAttribute('aria-expanded','false');rail.setAttribute('aria-hidden','true');if(navFocus?.isConnected)navFocus.focus({preventScroll:true});}
+ function open(){window.PianoSongs?.closePanel?.();navFocus=document.activeElement;previewOwner=[window.PianoFoundation,window.PianoStudy,window.PianoSongs].find(o=>o?.previewNavigation?.(true))||null;if(!previewOwner)window.PianoPause?.();done.textContent=previewOwner?'回到当前题':'返回工作区';let note=rail.querySelector('.menu-pause-note');if(!note){note=document.createElement('p');note.className='menu-pause-note';done.before(note);}note.textContent=previewOwner?'查看菜单时暂存当前题；返回可继续独立作答。':'正在计时或播放的训练会暂停；返回后手动继续，本轮保留中断记录。';body.classList.add('tablet-menu-open');shade.hidden=false;$('workspaceMenu').setAttribute('aria-expanded','true');rail.removeAttribute('aria-hidden');rail.querySelector('.nav button.active,.nav button')?.focus();}
  shade.onclick=close;done.onclick=close;$('workspaceMenu').onclick=()=>body.classList.contains('tablet-menu-open')?close():open();
  $('workspaceBack').onclick=()=>window.PianoBack?.();$('workspaceInput').onclick=()=>window.PianoInput?.open();
  rail.addEventListener('click',e=>{if(e.target.closest('[data-page]'))close();});
