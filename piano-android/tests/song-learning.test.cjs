@@ -35,6 +35,11 @@ test('assisted or failed performance schedules retrieval and clean free attempts
  const s=C.demo(),d=L.defaults(),settings=C.settings(s,{mode:'beginner'}),t={source:'midi',settings},r=report(s,t);r.result.hinted=1;r.result.answers[0].hint=true;r.result.correct--;
  const m=L.observe(d,s,r,1000).memory;assert.equal(m.status,'assisted');L.observe(d,s,report(s,t),3000);assert.equal(d.memory[m.key].status,'assisted');assert.equal(d.memory[m.key].due,m.due);
 });
+
+test('a perfect assisted timed round never gets independent-completion advice',()=>{
+ const s=C.demo(),t={source:'midi',settings:C.settings(s,{mode:'advanced'})},r=report(s,t);r.assisted=true;
+ assert.equal(L.clean(r),false);assert.equal(L.diagnosis(s,r).code,'observe');assert.match(L.diagnosis(s,r).title,/收起帮助/);
+});
 test('diagnosis prioritizes repeated later bar and isolates timing without changing the source phrase',()=>{
  const s=C.demo(),d=L.defaults(),settings=C.settings(s,{mode:'advanced',from:1,to:4}),t={source:'midi',settings},r=report(s,t);r.result.answers[0].correct=false;r.result.answers[0].actual=61;
  for(const a of r.result.answers.filter(a=>a.measure===3)){a.correct=false;a.actual=a.pitch+1;}r.result.correct=r.result.answers.filter(a=>a.correct).length;

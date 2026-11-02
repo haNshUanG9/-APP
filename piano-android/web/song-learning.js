@@ -22,7 +22,7 @@ const SongLearning=(()=>{
     for(const s of ['touch','midi']){const t=raw.current?.[s];if(t&&typeof t.songId==='string'&&t.settings&&['route','review','remedy'].includes(t.kind))d.current[s]={...copy(t),route:null};}
     return d;
   }
-  const condition=s=>[s.track,s.hand,s.grid,s.split,s.tempo,s.tolerance,s.offset,s.metronome,s.accompany];
+  const condition=s=>[s.track,s.hand,s.grid,s.split,s.tempo,s.tolerance,s.offset,s.metronome,s.accompany,...(s.handMap&&s.handMap!=='score'?[s.handMap]:[])];
   const fingerprint=song=>song.notes.reduce((h,n)=>(Math.imul(h,31)+n.pitch*11+Math.round(n.start*96)+Math.round(n.duration*96))|0,17)+':'+song.notes.length+':'+song.measures.length;
   const key=(song,s,src)=>JSON.stringify([song.id,source(src),...condition(s)]);
   const memoryKey=(song,s,src)=>JSON.stringify([song.id,source(src),...condition(s),s.from,s.to,s.mode==='beginner'||s.mode==='exam'&&s.examKind==='notes'?'pitch':'timed']);
@@ -57,7 +57,7 @@ const SongLearning=(()=>{
     const ticket={key:k,token:++p.token,unit:p.unit,stage,settings:JSON.stringify(settings)};p.ticket=copy(ticket);
     const task={kind:'route',songId:song.id,source:source(src),settings,route:ticket,planKey:k,title:STAGES[stage],connected:u.connected};data.current[source(src)]=task;return task;
   }
-  function clean(report){const r=report.result;return !!(report.complete&&!report.interrupted&&!report.settings.drill&&r&&r.total>0&&r.correct===r.total&&(r.onTime===null||r.onTime===r.total)&&!r.extras?.length&&!r.wrong&&!r.hinted&&r.answers.every(a=>a.correct&&!a.hint));}
+  function clean(report){const r=report.result;return !!(report.complete&&!report.interrupted&&!report.assisted&&!report.settings.drill&&r&&r.total>0&&r.correct===r.total&&(r.onTime===null||r.onTime===r.total)&&!r.extras?.length&&!r.wrong&&!r.hinted&&r.answers.every(a=>a.correct&&!a.hint));}
   function observe(data,song,report,now=Date.now()){
     if(report.id&&data.seen.includes(report.id))return {duplicate:true,clean:false,route:null,memory:null};
     if(report.id){data.seen.push(report.id);data.seen=data.seen.slice(-200);}
@@ -95,6 +95,7 @@ const SongLearning=(()=>{
     else if(timed&&counts.timing+counts.extra>=2&&result.correct/Math.max(1,result.total)>=.8){code='timing';title='保持原句，单练起拍与等待';reason='大部分音高正确，起拍或多按仍不稳定；用同一小节练节奏后回原句检查。';}
     else if(counts.miss){code='chunk';title='缩短到问题小节，先读准';reason='未匹配起点可能有多种原因，先降低片段长度，暂不判断是识谱还是配合问题。';}
     else if(problems.length){code='observe';title='保留原片段，再观察一轮';reason='错误尚不足以稳定归因；问题位置已标出，保持条件检查。';}
+    else if(report.assisted){code='observe';title='收起帮助，独立检查原片段';reason='本轮使用过键位或指法预读；先关闭提示，再检查能否独立完成。';}
     return {code,title,reason,problems,focus:focus?.measure||report.settings.from,counts};
   }
   function remedy(data,song,report,history=[]){
@@ -106,7 +107,7 @@ const SongLearning=(()=>{
     const names=[['C',0],['C',1],['D',0],['D',1],['E',0],['F',0],['F',1],['G',0],['G',1],['A',0],['B',-1],['B',0]],v=names[n.pitch%12];return {step:v[0],alter:v[1],octave:Math.floor(n.pitch/12)-1};
   }
   function hint(n,level=1,previous=null){
-    const p=spelling(n),index=p.octave*7+'CDEFGAB'.indexOf(p.step),bass=n.staff===2,landmarks=bass?[43,48,53,60]:[60,67,72,77];
+    const p=spelling(n),index=p.octave*7+'CDEFGAB'.indexOf(p.step),bass=n.sourceClef?n.sourceClef==='F':n.staff===2,landmarks=bass?[43,48,53,60]:[60,67,72,77];
     let ref=landmarks.map(pitch=>({pitch,index:(Math.floor(pitch/12)-1)*7+[0,2,4,5,7,9,11].indexOf(pitch%12)})).sort((a,b)=>Math.abs(a.index-index)-Math.abs(b.index-index))[0],known=false;
     if(previous&&previous.staff===n.staff&&!spelling(previous).alter){const p=spelling(previous),i=p.octave*7+'CDEFGAB'.indexOf(p.step);if(Math.abs(i-index)<=4&&Math.abs(i-index)<Math.abs(ref.index-index)){ref={pitch:previous.pitch,index:i};known=true;}}
     const delta=index-ref.index,steps=Math.abs(delta),bottom=bass?18:30,acc=p.alter>0?'升'+(p.alter>1?'两':'一')+'个半音':p.alter<0?'降'+(p.alter< -1?'两':'一')+'个半音':'自然音位置',answer=p.step+(p.alter>0?'♯'.repeat(p.alter):p.alter<0?'♭'.repeat(-p.alter):'')+p.octave;

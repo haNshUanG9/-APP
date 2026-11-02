@@ -97,6 +97,8 @@ const SongCore=(()=>{
     for(const part of children(root,'part')){
       const track=part.getAttribute('id');tracks.push({id:track,name:partNames.get(track)||track});
       let div=1,beats=4,unit=4,start=0,transpose=0;const ties=new Map(),clefs={1:'G',2:'F'};
+      const partIndex=children(root,'part').indexOf(part),partCount=children(root,'part').length;
+      const staffCount=Math.max(1,...[...part.querySelectorAll('staves')].map(e=>Number(e.textContent)||1),...[...part.querySelectorAll('note > staff')].map(e=>Number(e.textContent)||1));
       for(const [mi,m]of children(part,'measure').entries()){
         let cursor=0,latest=0,lastOnset=0,seen=false;
         for(const e of m.children){
@@ -119,11 +121,12 @@ const SongCore=(()=>{
             const step=txt(pit,'step'),alter=Number(txt(pit,'alter','0')),octave=Number(txt(pit,'octave'));
             if(!/^[CDEFGAB]$/.test(step)||!Number.isInteger(octave)||!Number.isInteger(alter))throw Error('音高无效或包含微分音，请先导出十二平均律曲谱。');
             const pitch=(octave+1)*12+({C:0,D:2,E:4,F:5,G:7,A:9,B:11}[step])+alter+transpose;
-            const staff=Number(txt(e,'staff','1')),hand=staff>1||clefs[staff]==='F'?2:1,voice=txt(e,'voice','1');
+            const staff=Number(txt(e,'staff','1')),hand=staffCount>1?(staff>1?2:1):partCount===2?(partIndex===0?1:2):clefs[staff]==='F'?2:1,voice=txt(e,'voice','1');
+            const finger=[...e.querySelectorAll('notations > technical > fingering')].map(f=>f.textContent.trim()).find(f=>/^[1-5](?:[-–/][1-5])?$/.test(f))||'';
             const ts=children(e,'tie').map(x=>x.getAttribute('type')),key=track+':'+staff+':'+voice+':'+pitch;
         const existing=ties.get(key);
             if(ts.includes('stop')&&existing&&Math.abs(existing.start+existing.duration-start-at)<.01){existing.duration+=dur;if(!ts.includes('start'))ties.delete(key);}
-            else {const n={id:'x'+id++,pitch,start:start+at,duration:dur,velocity:80,track,staff:hand,sourceStaff:staff,measure:mi+1,spelling:{step,alter,octave},transpose};notes.push(n);if(ts.includes('start'))ties.set(key,n);}
+            else {const n={id:'x'+id++,pitch,start:start+at,duration:dur,velocity:80,track,staff:hand,sourceStaff:staff,sourceClef:clefs[staff]||'G',voice,finger,fingerSource:finger?'score':'',measure:mi+1,spelling:{step,alter,octave},transpose};notes.push(n);if(ts.includes('start'))ties.set(key,n);}
           }
         }
         const nominal=beats*4/unit;
@@ -142,12 +145,14 @@ const SongCore=(()=>{
   function settings(song,raw={}){
     const allowed=song.tracks.map(t=>t.id),track=allowed.includes(raw.track)?raw.track:'all';
     const value={mode:['beginner','advanced','exam','listen'].includes(raw.mode)?raw.mode:'beginner',examKind:raw.examKind==='notes'?'notes':'timed',track,hand:['both','right','left'].includes(raw.hand)?raw.hand:'both',split:clamp(Math.round(Number(raw.split)||60),21,108),grid:[.25,.5,1/3].includes(Number(raw.grid))?Number(raw.grid):.25,tempo:clamp(Number(raw.tempo)||song.baseTempo,20,240),from:clamp(Math.floor(Number(raw.from)||1),1,song.measures.length),to:clamp(Math.floor(Number(raw.to)||Math.min(2,song.measures.length)),1,song.measures.length),offset:clamp(Number(raw.offset)||0,-400,400),tolerance:raw.tolerance==='strict'?'strict':'normal',loop:!!raw.loop,metronome:raw.metronome!==false,accompany:!!raw.accompany,zoom:clamp(Number(raw.zoom)||1,.65,1.6),drill:raw.drill==='rhythm'?'rhythm':''};
+    value.handMap=['swap','right','left'].includes(raw.handMap)?raw.handMap:'score';
     if(value.to<value.from)[value.from,value.to]=[value.to,value.from];return value;
   }
+  function handOf(song,n,s){const base=song.format==='midi'&&!song.study?.original?(n.pitch<s.split?2:1):n.staff;return s.handMap==='swap'?(base===1?2:1):s.handMap==='right'?1:s.handMap==='left'?2:base;}
   function prepared(song,raw){
     const s=settings(song,raw);if(s.to<s.from)[s.from,s.to]=[s.to,s.from];const from=song.measures[s.from-1].start,to=song.measures[s.to-1].end;
     const selected=song.notes.filter(n=>s.track==='all'||n.track===s.track).map(n=>{
-      const staff=song.format==='midi'?(n.pitch<s.split?2:1):n.staff;
+      const staff=handOf(song,n,s);
       const start=song.format==='midi'?Math.round(n.start/s.grid)*s.grid:n.start;
       const end=song.format==='midi'?Math.max(start+s.grid,Math.round((n.start+n.duration)/s.grid)*s.grid):n.start+n.duration;
       return {...n,start,duration:end-start,staff};
@@ -222,7 +227,8 @@ const SongCore=(()=>{
                 out+='<duration>'+Math.round(d[0]*96)+'</duration>'+(tieStop?'<tie type="stop"/>':'')+(tieStart?'<tie type="start"/>':'')+'<voice>'+(st*10+vi)+'</voice><type>'+d[1]+'</type>'+(d[2]?'<dot/>':'');
                 if(d[3])out+='<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>';
                 out+='<staff>'+st+'</staff>';
-          if(tieStop||tieStart)out+='<notations>'+(tieStop?'<tied type="stop"/>':'')+(tieStart?'<tied type="start"/>':'')+'</notations>';
+          const finger=n&&!tieStop&&/^[1-5](?:[-–/][1-5])?$/.test(n.finger||'')?'<technical><fingering>'+esc(n.finger)+'</fingering></technical>':'';
+          if(tieStop||tieStart||finger)out+='<notations>'+(tieStop?'<tied type="stop"/>':'')+(tieStart?'<tied type="start"/>':'')+finger+'</notations>';
                 out+='</note>';
               }t+=d[0];
             }
@@ -246,7 +252,7 @@ const SongCore=(()=>{
     if(value.format!=='midi')throw Error('曲谱格式不受支持。');
     const song=check(JSON.parse(JSON.stringify(value)));if(song.tracks.some(t=>typeof t.id!=='string'||typeof t.name!=='string')||song.notes.some(n=>!song.tracks.some(t=>t.id===n.track)))throw Error('曲谱声部数据无效。');return song;
   }
-  return Object.freeze({parseMidi,parseXML,settings,prepared,secondsAt,beatAt,evaluate,toXML,demo,median,pitchName,esc,fromStored});
+  return Object.freeze({parseMidi,parseXML,settings,prepared,handOf,secondsAt,beatAt,evaluate,toXML,demo,median,pitchName,esc,fromStored});
 })();
 if(typeof globalThis!=='undefined')globalThis.SongCore=SongCore;
 if(typeof module!=='undefined')module.exports=SongCore;

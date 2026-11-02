@@ -38,7 +38,7 @@
  function decorate(){
   queued=false;const screen=body.dataset.screen||'today',study=screen==='studyLesson'&&!$('studyLesson').classList.contains('show-report'),task=study||screen==='practice';
   body.classList.toggle('tablet-task',task);body.classList.toggle('tablet-rhythm',study&&$('studyLesson').classList.contains('rhythm-workspace'));body.classList.toggle('tablet-foundation',screen==='foundationPage'&&$('foundationPage').dataset.view==='session');
-  text(document.querySelector('.app-header h1'),names[screen]||'识谱练习室');$('workspaceBack').hidden=screen==='today';
+  text(document.querySelector('.app-header h1'),screen==='songsPage'?(window.PianoSongs?.getState().song?.title||'我的曲谱'):names[screen]||'识谱练习室');$('workspaceBack').hidden=screen==='today';
   const midi=window.PianoInput?.isMidi();text($('workspaceInputLabel'),midi?'实体琴已连接':'触屏练习');$('workspaceInput').classList.toggle('connected',!!midi);$('workspaceInput').title=$('midiNotes')?.textContent||'实体琴与输入设置';
   syncKeyboard();
   const size=task?[innerWidth,innerHeight,body.classList.contains('midi-layout'),body.classList.contains('midi-keys-visible'),body.classList.contains('midi-reverse'),body.classList.contains('tablet-keyboard-hidden')].join(':'):'';

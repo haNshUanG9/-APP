@@ -5,7 +5,7 @@
   const MODES={beginner:['认音练习','弹对再前进'],advanced:['跟拍练习','音高与起拍'],exam:['考核','无提示完成'],listen:['欣赏','跟谱听音乐']};
   let library=[],selected=null,song=null,prefs={},page=false,busy=false,starting=false,run=null,osmd=null,renderGeneration=0,raf=0,audio=null,scheduled=[],dbPromise=null,pressed=new Set(),heldVoices=new Map(),lastCursor=-1;
   const stateKey='piano-song-settings-v1',recordKey='piano-song-reports-v1',learningKey='piano-song-learning-v1',selectionKey='piano-song-last-v1';
-  const reading=true;let panelOpen=false,panelFocus=null;
+  const reading=true;let panelOpen=false,panelFocus=null,guideExercise=null,guideWrong=new Set(),guidePainted=new Set();
   let learning=L.defaults(),noteIndex=new Map(),displayReport=null;
   try{learning=L.normalize(JSON.parse(localStorage.getItem(learningKey)||'null'));}catch(e){}
   const builtin=()=>SongBank.all(),isBuiltin=id=>builtin().some(s=>s.id===id);
@@ -26,7 +26,7 @@
   }
   function settings(){return song?C.settings(song,prefs[selected]||{}):{};}
   function saveSettings(){try{localStorage.setItem(stateKey,JSON.stringify(prefs));}catch(e){H.notice('曲谱设置暂时无法保存，本轮仍可使用。');}}
-  function tell(message,bad=false){if($('songFeedback')){$('songFeedback').textContent=message;$('songFeedback').classList.toggle('bad',bad);}}
+  function tell(message,bad=false){if($('songFeedback')){$('songFeedback').textContent=message;$('songFeedback').classList.toggle('bad',bad);$('songFeedback').parentElement.classList.toggle('guide-message',bad||/正在准备|已暂停|结束本轮|速度已固定|独立检查/.test(message));}}
   function titleFor(s){return s.drill?'原句节奏拆练':MODES[s.mode][0]+(s.mode==='exam'?' · '+(s.examKind==='notes'?'认音考核':'跟拍考核'):'');}
   function renderLibrary(){
     const host=$('songLibrary');if(!host)return;
@@ -43,7 +43,7 @@
       <div id="songLearning"></div><div class="song-mode-tabs" role="tablist" aria-label="曲谱模式">${Object.entries(MODES).map(([key,v])=>`<button role="tab" aria-selected="${s.mode===key}" data-song-mode="${key}" class="${s.mode===key?'selected':''}"><strong>${v[0]}</strong><small>${v[1]}</small></button>`).join('')}</div>
       <details id="songSetup" class="song-setup"><summary>自由练习设置 · 声部、范围与速度</summary><div class="song-controls" id="songControls">
         <label>声部<select id="songTrack"><option value="all">全部声部</option>${(song?.tracks||[]).map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}</select></label>
-        <label>练习部分<select id="songHand"><option value="both">双手</option><option value="right">右手 / 高音谱表</option><option value="left">左手 / 低音谱表</option></select></label>
+        <label>练习部分<select id="songHand"><option value="both">双手</option><option value="right">右手</option><option value="left">左手</option></select></label>
         <label>起始小节<input id="songFrom" type="number" min="1" max="${song?.measures.length||1}" value="${s.from||1}"></label><label>结束小节<input id="songTo" type="number" min="1" max="${song?.measures.length||1}" value="${s.to||2}"></label>
         <label>速度 BPM<input id="songTempo" type="number" min="20" max="240" value="${Math.round(s.tempo||60)}"></label>
         <label>考核内容<select id="songExam"><option value="timed">音高与节奏</option><option value="notes">仅认音</option></select></label>
@@ -69,7 +69,7 @@
     $('songWhole').onclick=()=>change({from:1,to:song.measures.length});
     $('songStart').onclick=start;$('songPause').onclick=()=>run?.paused?resume():pause();$('songStop').onclick=()=>finish(false);$('songHint').onclick=hint;
     $('songKeysToggle').onclick=()=>{$('songKeys').hidden=!$('songKeys').hidden;$('songKeysToggle').textContent=$('songKeys').hidden?'显示屏幕琴键':'收起屏幕琴键';document.body.classList.toggle('tablet-song-keys',!$('songKeys').hidden);window.dispatchEvent(new Event('pianolayoutchange'));};
-    document.body.classList.toggle('tablet-song-keys',!$('songKeys').hidden);renderKeys();renderHistory();renderLearning();renderScore();
+    document.body.classList.toggle('tablet-song-keys',!$('songKeys').hidden);guideExercise=C.prepared(song,s);renderKeys();renderHistory();renderLearning();mountGuidance();renderScore();
   }
   function closePanel(){const wasOpen=panelOpen;panelOpen=false;const panel=$('songPanel');if(panel)panel.hidden=true;$('songPanelShade')?.setAttribute('hidden','');$('songReaderToggle')?.setAttribute('aria-expanded','false');if(wasOpen)(panelFocus?.isConnected?panelFocus:$('songReaderToggle'))?.focus({preventScroll:true});}
   function toggleReading(){if(panelOpen){closePanel();return;}if(active()&&!run.paused)pause();panelFocus=document.activeElement;panelOpen=true;$('songPanel').hidden=false;$('songPanelShade').hidden=false;$('songReaderToggle').setAttribute('aria-expanded','true');$('songPanelClose').focus();}
@@ -78,9 +78,10 @@
     const left=panel.querySelector('.song-panel-library'),right=panel.querySelector('.song-panel-settings');left.append(root.querySelector('.song-page-head'),root.querySelector('.song-library'));for(const node of [workspace.querySelector('.song-title-row'),$('songSetup'),$('songLearning'),$('songHistory')])right.appendChild(node);const footer=document.createElement('div');footer.className='song-panel-footer';footer.innerHTML='<span>调整好后，返回谱面开始练习。</span><button class="primary" id="songPanelDone">完成设置，返回谱面</button>';panel.appendChild(footer);root.appendChild(panel);$('songPanelDone').onclick=closePanel;const shade=document.createElement('div');shade.id='songPanelShade';shade.className='song-panel-shade';shade.hidden=!panelOpen;root.appendChild(shade);shade.onclick=closePanel;$('songPanelClose').onclick=closePanel;$('songReaderToggle').textContent='曲库与设置';$('songReaderToggle').setAttribute('aria-expanded',String(panelOpen));$('songReaderToggle').setAttribute('aria-controls','songPanel');
   }
   function renderKeys(){
-    const s=settings(),ex=C.prepared(song,s),range=ex.notes.map(n=>n.pitch);
+    const s=settings(),ex=C.prepared(song,s),range=ex.all.map(n=>n.pitch);
     let lo=clamp(Math.floor(Math.min(...range)/12)*12,21,84),hi=clamp(Math.ceil(Math.max(...range)/12)*12,lo+12,108);
-    const host=$('songKeys');host.innerHTML=Array.from({length:hi-lo+1},(_,i)=>lo+i).map(n=>`<button data-song-key="${n}" class="${[1,3,6,8,10].includes(n%12)?'black':'white'}" aria-label="${C.pitchName(n)}">${C.pitchName(n)}</button>`).join('');
+    const host=$('songKeys');let white=0;const count=Array.from({length:hi-lo+1},(_,i)=>lo+i).filter(n=>![1,3,6,8,10].includes(n%12)).length;
+    host.innerHTML=Array.from({length:hi-lo+1},(_,i)=>lo+i).map(n=>{const black=[1,3,6,8,10].includes(n%12),x=white;if(!black)white++;return `<button data-song-key="${n}" class="${black?'black':'white'}" style="left:${(black?x-.31:x)/count*100}%;width:${(black?.62:1)/count*100}%" aria-label="${C.pitchName(n)}"><span class="guide-key-name">${n%12===0?C.pitchName(n):''}</span><span class="guide-current"></span><span class="guide-next"></span></button>`;}).join('');
     host.querySelectorAll('button').forEach(b=>{
       const n=Number(b.dataset.songKey);b.onpointerdown=e=>{if(input()==='midi')return;e.preventDefault();b.setPointerCapture?.(e.pointerId);b.classList.add('down');if(!heldVoices.has(n))heldVoices.set(n,voice(n,audioTime(),30,.16));receive({type:'on',note:n,at:performance.now()},'touch');};
       const up=()=>{b.classList.remove('down');const v=heldVoices.get(n);if(v){release(v);heldVoices.delete(n);}receive({type:'off',note:n,at:performance.now()},'touch');};b.onpointerup=up;b.onpointercancel=up;
@@ -89,8 +90,8 @@
   }
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   function filteredXML(){
-    if(song.format==='midi')return C.toXML(song,settings());
-    const doc=new DOMParser().parseFromString(song.xml,'application/xml'),s=settings();
+    const s=settings(),doc=new DOMParser().parseFromString(song.format==='midi'?C.toXML(song,s):song.xml,'application/xml');
+    if(s.mode==='exam'||!window.PianoSongGuide?.scoreFingers())doc.querySelectorAll('fingering').forEach(n=>n.remove());
     if(s.track!=='all'){doc.querySelectorAll('score-part,part').forEach(p=>{if(p.getAttribute('id')!==s.track)p.remove();});}
     return new XMLSerializer().serializeToString(doc);
   }
@@ -117,11 +118,35 @@
         cur.next();
       }
       if(!cur.Iterator.EndReached){cur.show();lastCursor=beat;const el=cur.cursorElement,container=$('songScoreScroll');if(el&&container){const a=el.getBoundingClientRect(),b=container.getBoundingClientRect();if(a.top<b.top+25||a.bottom>b.bottom-25)container.scrollTop+=a.top-b.top-90;}}
+      window.PianoSongGuide?.update(beat);
     }catch(e){/* The notation stays usable when a source has no cursor entry at this beat. */}
   }
   const EPS=1e-6;
   function choose(id){if(active())finish(false);selected=id;song=library.find(s=>s.id===id)||library[0];if(!song)return;selected=song.id;try{localStorage.setItem(selectionKey,selected);}catch(e){}prefs[selected]=settings();displayReport=null;saveSettings();render();}
   function change(values){if(active()){pause();tell('请结束本轮，再调整模式或练习条件。');return;}const focusId=document.activeElement?.id,scroll=$('songPanel')?.querySelector('.song-panel-settings')?.scrollTop||0;freeTask();prefs[selected]=C.settings(song,{...settings(),drill:'',...values});displayReport=null;saveSettings();render();if(panelOpen){const panel=$('songPanel')?.querySelector('.song-panel-settings');if(panel)panel.scrollTop=scroll;$(focusId)?.focus({preventScroll:true});}}
+  function mountGuidance(){
+    window.PianoSongGuide.mount({
+      get:()=>({song,settings:active()?run.settings:settings(),exercise:active()?run.exercise:guideExercise,active:active(),run,beat:lastCursor>=0?lastCursor:guideExercise.from,input:input(),pressed:[...pressed],wrong:[...guideWrong]}),
+      change,notice:tell,notation:()=>renderScore(),settingsPanel:()=>{if(!panelOpen)toggleReading();},layout:()=>window.dispatchEvent(new Event('pianolayoutchange')),
+      assist:ids=>{if(!active()||run.paused||run.settings.mode==='exam'||run.settings.mode==='listen'||!ids.length)return;run.assisted=true;for(const id of ids){if((run.hintLevels.get(id)||0)>=3)continue;run.hintLevels.set(id,3);if(guided()){const index=run.exercise.groups.findIndex(g=>g.notes.some(n=>n.id===id));if(index>=0)run.hinted.add(index);}}},
+      paint:paintGuidance,
+      locate:bar=>{if(active()){tell('结束本轮后再定位；考核与练习范围在本轮内保持固定。');return;}const beat=song.measures[bar-1]?.start;if(beat!==undefined){moveCursor(beat,true);$('songPosition').textContent='第 '+bar+' 小节 · 点击开始练习当前选段';}},
+      loop:value=>{if(active()){if(run.settings.mode==='exam')return;run.settings.loop=value;prefs[selected]={...settings(),loop:value};saveSettings();window.PianoSongGuide.refresh();}else change({loop:value});},
+      tempo:value=>{
+        const tempo=clamp(Math.round(value),20,240);
+        if(!active()){change({tempo});return;}
+        if(run.settings.mode!=='listen'||run.replay){tell('本轮练习速度已固定，结束后可调整。');return;}
+        const r=run,beat=C.beatAt(song,r.baseSeconds+Math.max(0,time()-r.countin)/1000,r.settings.tempo),paused=r.paused;cancelAnimationFrame(raf);silence();r.settings.tempo=tempo;r.baseSeconds=C.secondsAt(song,r.exercise.from,tempo);r.elapsed=(C.secondsAt(song,beat,tempo)-r.baseSeconds)*1000;r.started=performance.now();r.duration=(C.secondsAt(song,r.exercise.to,tempo)-r.baseSeconds)*1000;r.audioScheduled.clear();r.clickScheduled.clear();
+        for(const n of r.playNotes){const original=song.notes.find(x=>x.id===n.id);if(!original)continue;n.ms=(C.secondsAt(song,Math.max(original.start,r.exercise.from),tempo)-r.baseSeconds)*1000;n.dur=C.secondsAt(song,Math.min(original.start+original.duration,r.exercise.to),tempo)-C.secondsAt(song,Math.max(original.start,r.exercise.from),tempo);}
+        prefs[selected]={...settings(),tempo};saveSettings();window.PianoSongGuide.update(beat);if(!paused)tick();
+      }
+    });
+  }
+  function paintGuidance(current,next,enabled){
+    for(const head of guidePainted){if(!head.dataset.songMark){head.style.fill='';head.querySelectorAll('path').forEach(p=>p.style.fill='');}head.removeAttribute('data-guide-hand');}guidePainted.clear();
+    if(!enabled||displayReport)return;
+    for(const n of current){const list=noteIndex.get(Math.round(n.start*10000))||[];for(const m of list.filter(m=>m.pitch===n.pitch)){if(m.head.dataset.songMark)continue;const color=n.staff===2?'#248b7d':'#b77924';m.head.dataset.guideHand=String(n.staff);m.head.style.fill=color;m.head.querySelectorAll('path').forEach(p=>p.style.fill=color);guidePainted.add(m.head);}}
+  }
   function audioTime(){try{audio=window.PianoAudio.context();prepareAudio();return audio.currentTime;}catch(e){return 0;}}
   async function prepareAudio(pitches=[]){
     try{audio=window.PianoAudio.context();await window.PianoAudio.prepare(pitches);return audio.state==='running';}catch(e){return false;}
@@ -151,11 +176,11 @@
     if(H.classicActive()||window.PianoStudy?.ownsActive()||window.PianoRhythm?.isActive()||window.PianoFoundation?.isActive()){tell('有其他训练正在进行，请先返回并结束，再开始曲谱练习。',true);return;}
     let ex=C.prepared(song,settings());if(ex.settings.drill==='rhythm')ex=rhythmExercise(ex);if(!ex.groups.length){tell('这个片段与声部没有可练习的音，请调整范围。',true);return;}
     starting=true;$('songStart').disabled=true;tell('正在准备钢琴音色…');const gen=renderGeneration,ok=await prepareAudio(song.notes.filter(n=>n.start<ex.from+8&&n.start+n.duration>ex.from).map(n=>n.pitch));starting=false;if(!page||gen!==renderGeneration||document.hidden){if($('songStart'))$('songStart').disabled=active()||!osmd;return;}if(ex.settings.mode==='listen'&&!ok){$('songStart').disabled=false;tell('声音未能启动，请再点播放，或检查系统音量。',true);return;}
-    silence();pressed.clear();displayReport=null;markScore(null);$('songReport').innerHTML='';$('songHintCard').hidden=true;document.body.classList.remove('song-hint-open');
-    const s=ex.settings;run={settings:{...s},exercise:ex,source:input(),index:0,correct:new Set(),first:new Map(),attempts:[],presses:[],hinted:new Set(),groupResults:[],started:performance.now(),paused:false,interrupted:false,finished:false,elapsed:0,audioScheduled:new Set(),clickScheduled:new Set(),generation:Date.now(),wrong:0,guidedAnswers:[],firstAnswers:new Map(),hintLevels:new Map(),events:[],heldAt:new Map(),task:taskFor()?JSON.parse(JSON.stringify(taskFor())):null};
+    silence();pressed.clear();guideWrong.clear();displayReport=null;markScore(null);$('songReport').innerHTML='';$('songHintCard').hidden=true;document.body.classList.remove('song-hint-open');
+    const s=ex.settings;run={settings:{...s},exercise:ex,source:input(),index:0,correct:new Set(),first:new Map(),attempts:[],presses:[],hinted:new Set(),groupResults:[],started:performance.now(),paused:false,interrupted:false,finished:false,assisted:false,elapsed:0,audioScheduled:new Set(),clickScheduled:new Set(),generation:Date.now(),wrong:0,guidedAnswers:[],firstAnswers:new Map(),hintLevels:new Map(),events:[],heldAt:new Map(),task:taskFor()?JSON.parse(JSON.stringify(taskFor())):null};
     run.baseSeconds=C.secondsAt(song,ex.from,s.tempo);run.duration=(C.secondsAt(song,ex.to,s.tempo)-run.baseSeconds)*1000;
     run.countin=s.mode==='listen'||guided()?0:song.measures[s.from-1].beats*60000/s.tempo*4/song.measures[s.from-1].unit;
-    run.playNotes=s.mode==='listen'?song.notes.filter(n=>(s.track==='all'||n.track===s.track)&&(s.hand==='both'||(song.format==='midi'?(n.pitch<s.split?2:1):n.staff)===(s.hand==='right'?1:2))&&n.start<ex.to&&n.start+n.duration>ex.from).map(n=>({...n,ms:(C.secondsAt(song,Math.max(n.start,ex.from),s.tempo)-run.baseSeconds)*1000,dur:C.secondsAt(song,Math.min(n.start+n.duration,ex.to),s.tempo)-C.secondsAt(song,Math.max(n.start,ex.from),s.tempo)})):
+    run.playNotes=s.mode==='listen'?song.notes.filter(n=>(s.track==='all'||n.track===s.track)&&(s.hand==='both'||C.handOf(song,n,s)===(s.hand==='right'?1:2))&&n.start<ex.to&&n.start+n.duration>ex.from).map(n=>({...n,ms:(C.secondsAt(song,Math.max(n.start,ex.from),s.tempo)-run.baseSeconds)*1000,dur:C.secondsAt(song,Math.min(n.start+n.duration,ex.to),s.tempo)-C.secondsAt(song,Math.max(n.start,ex.from),s.tempo)})):
       s.mode==='advanced'&&s.accompany&&s.hand!=='both'?ex.all.filter(n=>n.staff===(s.hand==='right'?2:1)).map(n=>({...n,ms:(C.secondsAt(song,n.start,s.tempo)-run.baseSeconds)*1000,dur:C.secondsAt(song,n.start+n.duration,s.tempo)-C.secondsAt(song,n.start,s.tempo)})):[];
     setLocked(true);moveCursor(ex.from,true);window.PianoInput?.sync();
     renderLearning();if(guided())showGroup();else {tell(s.mode==='listen'?'欣赏播放 · 离线钢琴采样':ok?'先听预备拍，再开始弹。':'声音未启用；先暂停检查声音，再跟拍。');tick();}
@@ -187,19 +212,20 @@
   function receive(e,source='midi'){
     if(!active()||run.paused||!page||source!==run.source||H.modalOpen()||window.PianoInput?.panelOpen?.())return;
     if(e.type==='reset'){pressed.clear();pause();return;}
-    if(e.type==='off'){if(pressed.has(e.note))run.events.push({type:'off',pitch:e.note,ms:time()-run.countin});pressed.delete(e.note);if(guided())advanceGroup();return;}
+    if(e.type==='off'){if(pressed.has(e.note))run.events.push({type:'off',pitch:e.note,ms:time()-run.countin});pressed.delete(e.note);guideWrong.delete(e.note);if(guided())advanceGroup();window.PianoSongGuide?.refresh();return;}
     if(e.type!=='on'||pressed.has(e.note)||run.settings.mode==='listen')return;pressed.add(e.note);run.events.push({type:'on',pitch:e.note,ms:time()-run.countin});
     if(guided()){
       const g=run.exercise.groups[run.index];if(!g)return;const wanted=g.notes.some(n=>n.pitch===e.note);
       run.attempts.push({group:run.index,pitch:e.note,correct:wanted,at:e.at});
       run.presses.push({pitch:e.note,ms:time(),at:e.at});
-      if(!wanted){run.wrong++;run.first.set(run.index,false);const missing=g.notes.filter(n=>!run.correct.has(n.pitch)).sort((a,b)=>Math.abs(a.pitch-e.note)-Math.abs(b.pitch-e.note));if(missing[0]&&!run.firstAnswers.has(missing[0].id))run.firstAnswers.set(missing[0].id,{actual:e.note,correct:false});if(run.settings.mode!=='exam')tell('收到 '+C.pitchName(e.note)+'，检查谱号、升降记号与八度。',true);return;}
+      if(!wanted){guideWrong.add(e.note);run.wrong++;run.first.set(run.index,false);const missing=g.notes.filter(n=>!run.correct.has(n.pitch)).sort((a,b)=>Math.abs(a.pitch-e.note)-Math.abs(b.pitch-e.note));if(missing[0]&&!run.firstAnswers.has(missing[0].id))run.firstAnswers.set(missing[0].id,{actual:e.note,correct:false});if(run.settings.mode!=='exam')tell('收到 '+C.pitchName(e.note)+'，检查谱号、升降记号与八度。',true);window.PianoSongGuide?.refresh();return;}
       if(!run.first.has(run.index))run.first.set(run.index,true);const target=g.notes.find(n=>n.pitch===e.note);if(!run.firstAnswers.has(target.id))run.firstAnswers.set(target.id,{actual:e.note,correct:true});run.correct.add(e.note);if($('songHintCard')){$('songHintCard').hidden=true;document.body.classList.remove('song-hint-open');}
       if(run.settings.mode!=='exam')tell(run.correct.size===g.notes.length?'这一组已弹齐，松开琴键后继续。':'这个音对了，再找同一组剩下的音。');
     }else{
       const ms=time()-run.countin-(performance.now()-e.at);if(ms< -Math.min(150,60000/run.settings.tempo*.2)||ms>run.duration)return;
       run.presses.push({pitch:run.settings.drill?60:e.note,ms,at:e.at});if(run.presses.length>40000){pause();tell('按键事件过多，已暂停，请检查设备是否重复发送。',true);}
     }
+    window.PianoSongGuide?.refresh();
   }
   function advanceGroup(){
     if(!active()||!guided()||run.paused||pressed.size)return;const g=run.exercise.groups[run.index];if(!g||!g.notes.every(n=>run.correct.has(n.pitch)))return;
@@ -217,7 +243,7 @@
     if($('songHintAnswer'))$('songHintAnswer').onclick=()=>voice(n.pitch,audioTime(),.6,.15);
   }
   function pause(){document.body.classList.remove('tablet-song-playing');
-    if(!active()||run.paused)return;run.elapsed=time();run.paused=true;run.interrupted=true;cancelAnimationFrame(raf);silence();pressed.clear();if($('songPause')){$('songPause').textContent='继续';tell('已暂停。确认输入与位置后继续；本轮将标记为中断，不算独立考核。');}
+    if(!active()||run.paused)return;run.elapsed=time();run.paused=true;run.interrupted=true;cancelAnimationFrame(raf);silence();pressed.clear();guideWrong.clear();window.PianoSongGuide?.refresh();if($('songPause')){$('songPause').textContent='继续';tell('已暂停。确认输入与位置后继续；本轮将标记为中断，不算独立考核。');}
   }
   async function resume(){
     if(!active()||!run.paused||!page||document.hidden)return;
@@ -235,13 +261,13 @@
         if(!complete&&g&&r.attempts.some(a=>a.group===r.index))for(const n of g.notes){const first=r.firstAnswers.get(n.id);answers.push({id:n.id,pitch:n.pitch,actual:first?.actual??null,correct:!!first?.correct&&!r.hintLevels.has(n.id),hint:r.hintLevels.has(n.id),measure:g.measure,beat:g.beat,sourceBeat:g.sourceBeat,staff:n.staff,timing:true});}
         const correct=answers.filter(a=>a.correct).length;
         result={total:answers.length,correct,onTime:null,missed:answers.filter(a=>a.actual===null).length,wrong:r.wrong,extras:[],extraAttempts:r.attempts.filter(a=>!a.correct).map(a=>({pitch:a.pitch,measure:r.exercise.groups[a.group].measure,sourceBeat:r.exercise.groups[a.group].sourceBeat})),score:answers.length?Math.round(Math.max(0,correct-Math.max(0,r.wrong-answers.filter(a=>a.actual!==null&&!a.correct&&!a.hint).length)*.3)/answers.length*100):0,answers,hinted:r.hinted.size,completed:r.guidedAnswers.length};
-      }else result=C.evaluate(song,r.exercise,r.presses,complete?Infinity:limit);
-      const report={version:2,id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7),songId:selected,title:song.title,at:Date.now(),settings:{...r.settings},source:r.source,complete,interrupted:r.interrupted,result,presses:r.presses.slice(0,40000),events:r.events.slice(0,40000),task:r.task};
+      }else {result=C.evaluate(song,r.exercise,r.presses,complete?Infinity:limit);for(const a of result.answers){a.hint=r.hintLevels.has(a.id);a.hintLevel=r.hintLevels.get(a.id)||0;}result.hinted=result.answers.filter(a=>a.hint).length;}
+      const report={version:2,id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7),songId:selected,title:song.title,at:Date.now(),settings:{...r.settings},source:r.source,complete,interrupted:r.interrupted,assisted:!!r.assisted,result,presses:r.presses.slice(0,40000),events:r.events.slice(0,40000),task:r.task};
       report.learning=L.observe(learning,song,report);saveLearning();
       records.unshift(report);records=records.slice(0,40);try{localStorage.setItem(recordKey,JSON.stringify(records));}catch(e){H.notice('曲谱练习报告未能保存，请备份曲谱库。');}
       if(show)showReport(report);
     }
-    if(page){setLocked(false);$('songPause').textContent='暂停';renderHistory();renderLearning();window.PianoInput?.sync();}
+    if(page){setLocked(false);$('songPause').textContent='暂停';renderHistory();renderLearning();window.PianoInput?.sync();window.PianoSongGuide?.refresh();}
   }
   function showReport(r){renderDetailedReport(r);}
   function activateTask(t){
@@ -312,7 +338,7 @@
     displayReport=r;const a=r.result,d=L.diagnosis(song,r,records),notesOnly=a.onTime===null,problems=a.answers.filter(x=>!x.correct||x.hint||!notesOnly&&!x.timing),current=taskFor(),mem=r.learning?.memory;
     const rows=problems.slice(0,36).map((x,i)=>{const m=song.measures[x.measure-1],source=x.sourceBeat??((song.measures[r.settings.from-1]?.start||0)+(x.beat||0)),beat=m?1+(source-m.start)*m.unit/4:1;return `<button data-song-error="${i}"><span>第 ${x.measure} 小节 · ${Number(beat.toFixed(2))} 拍</span><strong>${esc(answerText(x,r))}</strong></button>`;}).join('');
     const route=r.learning?.route,routeText=route?(route.done?'已完成这条分段路线，后续按到期安排检查保持。':route.passed?route.advanced?'当前步骤独立完成，可以继续下一步。':'本次独立完成，再确认一次后继续。':'当前步骤保留，先处理问题再回原句。'):'';
-    $('songReport').innerHTML=`<section class="song-report"><div class="song-report-title"><div><span class="eyebrow">${r.settings.mode==='exam'?'ASSESSMENT':'PRACTICE'} · 练后复盘</span><h3>${r.complete?'本段已完成':'本轮提前结束'}${r.interrupted?' · 含中断':''}${r.settings.drill?' · 节奏拆练':''}</h3><p>${esc(titleFor(r.settings))} · ${r.settings.from}–${r.settings.to} 小节 · ${Math.round(r.settings.tempo)} BPM · ${r.source==='midi'?'实体琴':'屏幕输入'}</p></div><strong class="song-report-score">${a.score}<small> / 100</small></strong></div><div class="song-report-metrics"><span><strong>${a.correct} / ${a.total}</strong>${notesOnly?'无提示首次认准':'音高正确 / 应弹音数'}</span><span><strong>${notesOnly?a.completed:a.onTime}</strong>${notesOnly?'纠正后完成音数':'音高与起拍同时正确'}</span><span><strong>${notesOnly?a.hinted:a.missed+' / '+a.extras.length}</strong>${notesOnly?'使用提示组数':'漏按 / 多按'}</span></div><div class="song-next-advice"><strong>${esc(d.title)}</strong><p>${esc(d.reason)}</p>${routeText?'<p>'+esc(routeText)+'</p>':''}${mem?'<small>本片段：'+({assisted:'需要收起帮助回测',independent:'本次独立完成',stable:'同条件重复完成',retained:'延迟回测后保持'})[mem.status]+' · 下次检查 '+new Date(mem.due).toLocaleString('zh-CN')+'</small>':''}</div><div class="actions"><button id="songRetry" class="primary">原片段再练</button>${d.problems.length&&!r.interrupted?'<button id="songFocus">按主要困难拆练</button>':''}${r.task?.kind==='route'&&!route?.done?'<button id="songNextTask">继续分段路线</button>':''}${current?.kind==='remedy'?'<button id="songBackOrigin">回到原片段检查</button>':''}<button id="songListenStandard">听标准片段</button>${r.events?.length?'<button id="songListenActual">听本次按键</button>':''}</div><p class="song-problem-bars">${d.problems.length?'优先复习：第 '+d.problems.map(x=>x.measure).slice(0,12).join('、')+' 小节。红色为错音/漏音，金色为提示/起拍问题；点击下方位置回到谱面。':'本次完成后，接回相邻乐句并按到期安排再检查。'}</p>${rows?'<details open class="song-error-list"><summary>具体位置 · '+problems.length+' 个目标</summary>'+rows+'</details>':''}<p class="song-report-limit">${notesOnly?'本轮错键尝试 '+a.wrong+' 次。同组音可以逐个找齐；和弦起音整齐度需要跟拍检查。':'评价音高与起拍，不把所有持键长度视为必须按满的演奏标准。'}${r.interrupted?' 本轮含中断，不推进独立学习证据。':''} 软件练习规则不等同标准化考试。</p></section>`;
+    $('songReport').innerHTML=`<section class="song-report"><div class="song-report-title"><div><span class="eyebrow">${r.settings.mode==='exam'?'ASSESSMENT':'PRACTICE'} · 练后复盘</span><h3>${r.complete?'本段已完成':'本轮提前结束'}${r.interrupted?' · 含中断':''}${r.settings.drill?' · 节奏拆练':''}</h3><p>${esc(titleFor(r.settings))} · ${r.settings.from}–${r.settings.to} 小节 · ${Math.round(r.settings.tempo)} BPM · ${r.source==='midi'?'实体琴':'屏幕输入'}</p></div><strong class="song-report-score">${a.score}<small> / 100</small></strong></div><div class="song-report-metrics"><span><strong>${a.correct} / ${a.total}</strong>${notesOnly?'无提示首次认准':'音高正确 / 应弹音数'}</span><span><strong>${notesOnly?a.completed:a.onTime}</strong>${notesOnly?'纠正后完成音数':'音高与起拍同时正确'}</span><span><strong>${notesOnly?a.hinted:a.missed+' / '+a.extras.length}</strong>${notesOnly?'使用提示组数':'漏按 / 多按'}</span></div><div class="song-next-advice"><strong>${esc(d.title)}</strong><p>${esc(d.reason)}</p>${routeText?'<p>'+esc(routeText)+'</p>':''}${mem?'<small>本片段：'+({assisted:'需要收起帮助回测',independent:'本次独立完成',stable:'同条件重复完成',retained:'延迟回测后保持'})[mem.status]+' · 下次检查 '+new Date(mem.due).toLocaleString('zh-CN')+'</small>':''}</div><div class="actions"><button id="songRetry" class="primary">原片段再练</button>${d.problems.length&&!r.interrupted?'<button id="songFocus">按主要困难拆练</button>':''}${r.task?.kind==='route'&&!route?.done?'<button id="songNextTask">继续分段路线</button>':''}${current?.kind==='remedy'?'<button id="songBackOrigin">回到原片段检查</button>':''}<button id="songListenStandard">听标准片段</button>${r.events?.length?'<button id="songListenActual">听本次按键</button>':''}</div><p class="song-problem-bars">${d.problems.length?'优先复习：第 '+d.problems.map(x=>x.measure).slice(0,12).join('、')+' 小节。红色为错音/漏音，金色为提示/起拍问题；点击下方位置回到谱面。':'本次完成后，接回相邻乐句并按到期安排再检查。'}</p>${rows?'<details open class="song-error-list"><summary>具体位置 · '+problems.length+' 个目标</summary>'+rows+'</details>':''}<p class="song-report-limit">${r.assisted?'本轮使用过键位/指法预读，记为辅助练习；请关闭提示后独立检查。 ':''}${notesOnly?'本轮错键尝试 '+a.wrong+' 次。同组音可以逐个找齐；和弦起音整齐度需要跟拍检查。':'评价音高与起拍，不把所有持键长度视为必须按满的演奏标准。'}${r.interrupted?' 本轮含中断，不推进独立学习证据。':''} 软件练习规则不等同标准化考试。</p></section>`;
     $('songRetry').onclick=()=>{if(active())finish(false,false);freeTask();prefs[selected]=C.settings(song,r.settings);displayReport=null;saveSettings();render();};
     if($('songFocus'))$('songFocus').onclick=()=>activateTask(L.remedy(learning,song,r.source===input()?r:{...r,source:input(),task:null},records));
     if($('songNextTask'))$('songNextTask').onclick=()=>{const p=learning.plans[r.task.route?.key||r.task.planKey];if(p)activateTask(L.next(learning,song,p.goal,input()));};
@@ -383,7 +409,7 @@
   }
   async function nativeFile(name,base64){const raw=atob(base64),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));await importFile(new File([bytes],name));}
   const back=window.PianoBack,pauseApp=window.PianoPause;
-  window.PianoBack=()=>{if(!page||window.PianoInput?.panelOpen?.())return back?.();if(panelOpen){closePanel();return true;}if(active()){pause();H.confirm('结束本轮并返回？','已经尝试的音保留记录，未练到的后续音不计错。',()=>{finish(false,false);H.showPage('today');});return true;}H.showPage('today');return true;};
+  window.PianoBack=()=>{if(!page||window.PianoInput?.panelOpen?.())return back?.();if(window.PianoSongGuide?.isOpen()){window.PianoSongGuide.close();return true;}if(panelOpen){closePanel();return true;}if(active()){pause();H.confirm('结束本轮并返回？','已经尝试的音保留记录，未练到的后续音不计错。',()=>{finish(false,false);H.showPage('today');});return true;}H.showPage('today');return true;};
   window.PianoPause=()=>{pause();silence();pauseApp?.();};
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
   window.addEventListener('pianoinputchange',()=>{if(active())pause();else if(page){render();tell(input()==='midi'?'实体琴已连接。':'当前使用屏幕琴键。');}});
@@ -393,7 +419,7 @@
     toggleReading,closePanel,refreshScore:()=>page&&renderScore(),
     isActive:active,inputSource:()=>run?.source||input(),midiEvent:e=>receive(e,'midi'),midiReady:()=>false,pause,stopForInputChange:pause,
     beforeOtherTraining:callback=>{if(!active())return false;pause();H.confirm('结束曲谱练习并开始新训练？','本轮已经尝试的音会保存。',()=>{finish(false,false);callback();});return true;},
-    beforeNavigate:name=>{if(name!=='songsPage'){closePanel();pause();silence();renderGeneration++;document.body.classList.remove('song-running','song-hint-open','tablet-song','tablet-song-keys','tablet-song-playing');}},
+    beforeNavigate:name=>{if(name!=='songsPage'){closePanel();pause();silence();window.PianoSongGuide?.reset();renderGeneration++;document.body.classList.remove('song-running','song-hint-open','tablet-song','tablet-song-keys','tablet-song-playing');}},
     navigate:name=>{page=name==='songsPage';if(!page)renderHome(name);if(page){$('modeTitle').textContent='我的曲谱 · 导入、听、练与考核';render();if(active()){setLocked(true);$('songPause').textContent='继续';tell('本轮已暂停，点击继续。');}}},
     importFile,nativeFile,getState:()=>({song,settings:settings(),run,library:library.map(s=>({id:s.id,title:s.title})),records,learning,task:taskFor(),markedNotes:document.querySelectorAll('[data-song-mark]').length,cursorBeat:osmd?.cursor?osmd.cursor.Iterator.CurrentSourceTimestamp.RealValue*4:null}),
     loadDemo:()=>choose('builtin-first-piece'),choose,renderHome,continueRoute:beginRoute,review:key=>openReview(key)
