@@ -1,0 +1,30 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright'),{pathToFileURL}=require('node:url'),path=require('node:path'),fs=require('node:fs');
+(async()=>{
+ const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true}),out=path.resolve(__dirname,'../build/tablet-1.5.2');fs.mkdirSync(out,{recursive:true});
+ const context=await b.newContext({viewport:{width:1600,height:1000}}),p=await context.newPage(),errors=[],requests=[];
+ p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
+ await p.addInitScript(()=>{window.PianoAndroid={midiClock:()=>performance.now(),midiStatus(){window.PianoInput?.status({state:'connected',detail:'USB Piano',devices:[{id:7,port:0,name:'USB Piano'}],deviceId:7,port:0,generation:0});}};});
+ const url=pathToFileURL(path.resolve(__dirname,'../native/assets/index.html')).href;
+ const load=async()=>{await p.goto(url);await p.waitForFunction(()=>window.PianoReady&&window.PianoTablet);};
+ const nav=async(name)=>{const target=p.locator(`.nav [data-page="${name}"]`);if(!await target.isVisible())await p.evaluate(()=>PianoTablet.openNavigation());await target.click();};
+ const send=async(type,n)=>p.evaluate(({type,n})=>PianoInput.receive([{type,note:n,velocity:type==='on'?85:0,channel:0,timeMs:performance.now()}]),{type,n});
+ await load();await nav('topics');await p.locator('[data-topic="ledger"]').click();await p.waitForTimeout(250);
+ await p.screenshot({path:out+'/01-specialty.png'});
+ const firstBox=await p.locator('#lessonStage [data-target]').first().boundingBox();assert(firstBox.width>45,JSON.stringify(firstBox));
+ await p.locator('#lessonMemory [data-memory-close]').click().catch(()=>{});const noHintBox=await p.locator('#lessonStage [data-target]').first().boundingBox();
+ await p.locator('#lessonHint').click();const hintBox=await p.locator('#lessonStage [data-target]').first().boundingBox();assert.deepEqual(hintBox,noHintBox);assert(await p.locator('#lessonStage [data-tablet-memory]').count());
+ await p.screenshot({path:out+'/02-hint.png'});
+ await p.locator('#lessonMemory [data-memory-close]').click();assert.equal(await p.locator('#lessonStage [data-tablet-memory]').count(),0);
+ const n=Number(await p.locator('#lessonStage [data-target]').first().getAttribute('data-target'));
+ await send('on',n);await p.waitForTimeout(850);assert.equal(Number(await p.locator('#lessonStage [data-target]').first().getAttribute('data-target')),n);await send('off',n);await p.waitForTimeout(850);
+ await p.locator('#lessonFinish').click();await p.locator('#modalConfirm').click();
+ await nav('reading');await p.locator('#studyCourse').selectOption('free');await p.locator('#studyClef').selectOption('dual');await p.locator('#studyFlow').selectOption('guided');await p.locator('#studyLaunch').click();await p.waitForTimeout(200);await p.screenshot({path:out+'/03-phrase.png'});assert(await p.locator('#lessonStage .tablet-score').count());
+ for(const [w,h]of [[800,1280],[1280,800]]){await p.setViewportSize({width:w,height:h});await p.waitForTimeout(250);assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await p.screenshot({path:out+`/phrase-${w}.png`});}
+ await p.locator('#lessonFinish').click();await p.locator('#modalConfirm').click();
+ await nav('songsPage');const ready=async()=>p.waitForFunction(()=>document.querySelector('#songScore svg')&&!document.querySelector('#songStart').disabled);
+ await ready();assert(await p.locator('body').evaluate(e=>e.classList.contains('tablet-song')));await p.setViewportSize({width:1600,height:1000});await p.waitForTimeout(600);await ready();await p.screenshot({path:out+'/04-song.png'});
+ await p.locator('#songReaderToggle').click();await ready();assert(await p.locator('#songSetup').isVisible());await p.locator('[data-song-mode=listen]').click();await ready();await p.locator('#songReaderToggle').click();await ready();await p.locator('#songStart').click();await p.waitForTimeout(350);await p.screenshot({path:out+'/05-listening.png'});await p.locator('#songPause').click();assert.equal(await p.locator('#songPause').innerText(),'继续');await p.locator('#songStop').click();
+ await p.locator('#songReaderToggle').click();await ready();await p.locator('#songFile').setInputFiles(path.resolve(__dirname,'../../deliverables/阿西达卡战记_MuseScore识别初稿/阿西达卡战记_识别初稿.mid'));await p.waitForFunction(()=>PianoSongs.getState().song.measures.length===96);await ready();await p.locator('#songReaderToggle').click();await ready();await p.screenshot({path:out+'/06-import.png'});
+ await nav('today');assert(await p.locator('#today').isVisible());
+ assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);console.log('Tablet UI: large real notes, stable in-score hints, MIDI release, phrase reflow/rotation, full reader and setup, playback/pause, real 96-bar MIDI import, no script/network errors.');await b.close();
+})().catch(e=>{console.error(e);process.exit(1);});

@@ -1,0 +1,8 @@
+Salamander Grand Piano — Alexander Holm
+Sampled instrument: Yamaha C5.
+Licensed under Creative Commons Attribution 3.0 Unported (CC BY 3.0).
+License: https://creativecommons.org/licenses/by/3.0/
+Source: https://github.com/Tonejs/audio/tree/efd8296360f9526e379bfbe5c1698ff54d6a1d34/salamander
+MP3 files redistributed unchanged; see README.upstream.txt for original notices.
+The application applies pitch shifting, gain and note-release envelopes at runtime.
+This application is not endorsed by the original author.
