@@ -117,7 +117,7 @@ public final class MainActivity extends Activity {
                 if(attempt<9){probeStartup(generation,attempt+1);return;}
                 if(startupDialogShown)return;startupDialogShown=true;
                 PackageInfo engine=WebView.getCurrentWebViewPackage();
-                final String diagnostics="版本 1.5.6 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
+                final String diagnostics="版本 1.5.7 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
                 new AlertDialog.Builder(MainActivity.this).setTitle("应用启动失败").setMessage(diagnostics+"\n\n可复制诊断信息用于排查。")
                     .setNeutralButton("复制诊断",(d,w)->{ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);if(clipboard!=null)clipboard.setPrimaryClip(ClipData.newPlainText("识谱应用启动诊断",diagnostics));toast("诊断信息已复制。");})
                     .setPositiveButton("关闭",null).show();

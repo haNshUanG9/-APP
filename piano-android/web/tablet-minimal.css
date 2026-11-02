@@ -1,0 +1,138 @@
+/* Approved minimal B: one reading surface, transient settings, black notation. */
+:root{--paper:#fafbfc;--canvas:#f3f5f8;--accent:#4d6687;--accent-dark:#33465f;--muted:#62748e;--line:#dce3ed}
+body.tablet-song{--chrome:58px;--minimal-keys:166px;--minimal-console:66px}
+body.tablet-song .app-header{height:var(--chrome);min-height:var(--chrome);padding:0 28px;gap:12px;background:var(--paper);border:0;flex-wrap:nowrap}
+body.tablet-song .app-header>#workspaceMenu,body.tablet-song .app-header>#workspaceBack,body.tablet-song .app-header>.workspace-title,body.tablet-song .app-header>#workspaceInput,body.tablet-song .app-header>#workspaceKeyboard,body.tablet-song .app-header>#openSettings{display:none}
+body.tablet-song .app-header>.tablet-song-top{display:flex;align-items:center;flex:1;flex-basis:auto;order:0;min-width:0;min-height:0;height:100%;gap:18px;padding:0;border:0;background:transparent}
+body.tablet-song .tablet-song-top>#songBack{display:block;min-width:38px;width:38px;padding:0;font-size:32px;font-weight:300}
+body.tablet-song .tablet-song-top>strong{display:block;font-size:20px;font-weight:650;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#18212b}
+body.tablet-song .tablet-song-top>span,body.tablet-song #songReaderToggle{display:none}
+body.tablet-song .tablet-song-top>#songHandQuick{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:400;color:#536b8f;white-space:nowrap}
+body.tablet-song #songFocusToggle{padding:10px;width:44px;min-width:44px}
+#songFocusToggle svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.5;fill:none}
+body.tablet-song #songsPage{padding:0;background:var(--paper)}
+body.tablet-song .song-layout{margin:0;flex:1;min-height:0;width:100%}
+body.tablet-song .song-workspace{display:grid;height:100%;grid-template-rows:minmax(0,1fr) var(--minimal-console) auto;background:var(--paper);border:0;border-radius:0;box-shadow:none;padding:0;overflow:hidden}
+body.tablet-song #songScoreScroll{grid-row:1;height:auto;padding:0;background:var(--paper);border:0}
+body.tablet-song #songScore{padding:0 28px;background:var(--paper);width:100%;min-height:100%;box-sizing:border-box;position:relative}
+.song-system-screen{gap:24px;justify-content:center;overflow:hidden}
+body.tablet-song #songScore .song-system-page svg{width:100%;height:100%;overflow:visible}
+body.tablet-song #songGuidePosition,body.tablet-song #songMeasureNav,body.tablet-song #songRoleLegend{display:none}
+body.tablet-song .song-transport{grid-row:2;position:relative;display:flex;align-items:center;gap:16px;flex-wrap:nowrap;height:var(--minimal-console);min-height:var(--minimal-console);margin:0;padding:8px 28px;background:var(--paper);border:0;border-top:1px solid var(--line);border-radius:0;box-sizing:border-box}
+body.tablet-song .song-transport button{min-width:0;min-height:44px;height:44px;padding:8px 12px;background:transparent;border:0;border-radius:8px;font-size:13px;font-weight:400;color:#526b8e;flex:none}
+body.tablet-song .song-transport-owners{display:none}
+body.tablet-song .song-transport #songPlay{display:flex;align-items:center;justify-content:center;width:46px;height:46px;min-height:46px;border-radius:50%;background:#33465f;color:white;padding:13px}
+body.tablet-song #songPlay svg{width:22px;height:22px;fill:currentColor;stroke:none}
+body.tablet-song #songRestart{width:42px;padding:10px;color:#243248}
+body.tablet-song #guideSpeed{min-width:100px;text-align:center;margin:0;padding:0 12px 0 0;border-right:1px solid var(--line);border-radius:0}
+body.tablet-song #guideSpeed b{display:inline;font-family:Georgia,serif;color:#18212b;font-size:20px;font-weight:400}
+body.tablet-song #guideSpeed small{display:inline;font-size:10px;color:#657b9b}
+body.tablet-song #songRange{display:flex;align-items:center;gap:8px;white-space:nowrap}
+body.tablet-song #songRange svg:last-child{width:12px}
+body.tablet-song #songSeek{flex:1;min-width:60px;height:44px;accent-color:#7089a9;padding:0;cursor:pointer;background:transparent}
+body.tablet-song #songPosition{font-size:12px;color:#627b9c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;min-width:70px;margin:0}
+body.tablet-song #songKeysToggle{margin-left:auto;font-size:13px;min-width:80px}
+body.tablet-song #songKeyPane{grid-row:3;height:var(--minimal-keys);padding:0 28px 16px;background:#eff3f7;border:0;box-sizing:border-box}
+body.tablet-song .guide-key-legend{height:24px;font-size:12px!important;color:#5d7699!important}
+body.tablet-song .guide-key-scroll{height:calc(var(--minimal-keys) - 40px)}
+body.tablet-song #songKeys{height:calc(var(--minimal-keys) - 42px);min-width:680px;border-radius:4px;border-color:#bfcede}
+body.tablet-song #songKeys button.black{background:#252f3b;border-color:#252f3b;border-radius:0 0 3px 3px}
+body.tablet-song #songKeys button.guide-current-l{background:#d3e8e4}
+body.tablet-song #songKeys button.guide-current-r{background:#f1dfb9}
+body.tablet-song #songKeys button.guide-current-r.guide-current-l{background:linear-gradient(90deg,#d3e8e4 50%,#f1dfb9 50%)}
+body.tablet-song #songKeys .guide-current{bottom:28px;font-size:20px}
+body.tablet-song #songKeys .guide-next{bottom:44px;font-size:11px;background:var(--paper)}
+body.tablet-song #songKeys button.black .guide-current{bottom:5px;font-size:13px}
+body.tablet-song #songKeys .guide-key-name{font-size:10px}
+body.tablet-song .song-status{top:6px;left:20%;right:20%;z-index:8;background:#fafbfcef;border:1px solid var(--line);pointer-events:auto;padding:8px 14px}
+body.tablet-song #songHintCard{bottom:var(--minimal-console);right:28px;max-width:440px;max-height:50%;z-index:16}
+body.tablet-song.tablet-song-keys #songHintCard{bottom:calc(var(--minimal-console) + var(--minimal-keys))}
+body.tablet-song #songGuidePanel{top:0;right:0;bottom:0;width:400px;max-width:100%;max-height:none;padding:26px 28px 24px;border:0;border-radius:0;background:var(--paper);box-shadow:-12px 0 60px #27334b16;z-index:41}
+body.tablet-song .guide-sheet-head h2{font-size:21px;margin:0}
+body.tablet-song .guide-sheet-head{margin-bottom:10px}
+body.tablet-song .guide-label{margin:12px 0 8px;font-size:13px;color:#60718b}
+body.tablet-song .guide-row{min-height:55px;margin:4px 0;font-size:14px}
+body.tablet-song .guide-row small{font-size:12px;margin-top:5px}
+body.tablet-song .guide-note{font-size:12px;line-height:1.6;margin:14px 0}
+body.tablet-song .guide-choice{border-radius:7px;background:#edf1f5;padding:3px}
+body.tablet-song .guide-choice button{min-height:40px;font-size:13px;padding:4px 6px}
+body.tablet-song #guideDone{margin-top:auto;background:#33465f;color:#fff;border:0;border-radius:9px;min-height:48px}
+body.tablet-song .guide-link{border:0;background:transparent;text-align:left;color:#536b8f;padding:12px 0;font-size:14px;flex:none}
+body.tablet-song .guide-more{flex:none;margin:0 0 8px}
+body.tablet-song .guide-more>summary{font-size:13px;padding:10px 0;min-height:40px}
+body.tablet-song .guide-more button{width:100%;margin-bottom:8px;font-size:13px;min-height:42px}
+body.tablet-song .guide-range-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px;margin:22px 0}
+body.tablet-song .guide-range-fields input,body.tablet-song #guideTempoInput{width:100%;display:block;margin-top:10px}
+body.tablet-song #guideMeasures{display:flex;flex-wrap:wrap;overflow:auto;max-height:250px;flex:none;gap:6px;height:auto;margin:16px 0}
+body.tablet-song #guideMeasures button{flex:none;min-width:44px;min-height:44px;height:44px;font-size:14px}
+body.tablet-song #songFocusBack,body.tablet-song #songFocusMore{display:none}
+body.song-focus{--chrome:0px}
+body.song-focus .app-header{display:none!important}
+body.song-focus .song-workspace{display:block;position:relative}
+body.song-focus #songScoreScroll{position:absolute;inset:54px 0 76px;width:100%;height:auto}
+body.song-focus #songKeyPane{display:none}
+body.song-focus #songFocusBack{display:block;position:fixed;top:10px;left:28px;width:44px;min-height:44px;z-index:15;font-size:32px;font-weight:300;background:var(--paper);border:0;padding:0}
+body.song-focus .song-transport{position:absolute;left:50%;right:auto;bottom:14px;transform:translateX(-50%);width:auto;height:54px;min-height:54px;gap:12px;border:0;padding:4px 10px;background:#fafbfcf2;border-radius:12px}
+body.song-focus .song-transport>button,body.song-focus .song-transport>#songPosition,body.song-focus .song-transport>#songSeek{display:none}
+body.song-focus .song-transport>#songPlay,body.song-focus .song-transport>#songFocusMore{display:flex}
+body.song-focus.song-focus-controls .song-transport>#songRestart,body.song-focus.song-focus-controls .song-transport>#guideSpeed,body.song-focus.song-focus-controls .song-transport>#songRange{display:flex;align-items:center}
+body.song-focus #songHintCard{bottom:78px}
+/* A question owns its header and a stable, full-size target. */
+body.tablet-study{--chrome:0px;--minimal-task-keys:178px;background:var(--paper)}
+body.tablet-study .app-header{display:none!important}
+body.tablet-study #studyLesson:not(.show-report):not(.rhythm-workspace){display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:58px minmax(0,1fr) 56px var(--minimal-task-keys);height:100%;padding:0;background:var(--paper);position:relative;overflow:hidden}
+body.tablet-study #studyLesson>.lesson-top{grid-row:1;display:flex;align-items:center;gap:18px;height:58px;min-height:58px;margin:0;padding:0 28px;border:0;background:transparent}
+body.tablet-study .lesson-top>div:first-of-type{flex:1;min-width:0;display:flex;align-items:center;gap:20px}
+body.tablet-study .lesson-top h2{margin:0;font-size:20px;font-weight:650;white-space:nowrap}
+body.tablet-study #lessonStatus{display:none}
+body.tablet-study #lessonCounter{font-size:13px;color:#627b9c;font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap}
+body.tablet-study #lessonBack{min-width:38px;width:38px;min-height:44px;padding:0;font-size:32px;font-weight:300;background:transparent;border:0}
+body.tablet-study .lesson-top .actions{gap:0;flex:none}
+body.tablet-study #lessonPause{border:0;background:transparent;padding:10px;min-width:44px;font-size:14px}
+body.tablet-study #lessonFinish{display:none}
+body.tablet-study .lesson-track{display:none}
+body.tablet-study #studyLesson>.lesson-reading,body.tablet-study #studyLesson>.lesson-reading.has-memory{grid-row:2;grid-column:1;display:block;position:relative;min-height:0;height:100%;margin:0;padding:0;border:0;background:transparent;overflow:hidden}
+body.tablet-study #lessonStage{height:100%;min-height:0;width:100%;max-width:none;padding:0 10%;overflow:auto}
+body.tablet-study #lessonStage svg.single-note-score{height:100%;width:100%;max-height:none;display:block}
+body.tablet-study .lesson-caption{display:none}
+body.tablet-study #studyLesson>.lesson-footer{grid-row:3;grid-column:1;display:flex;align-items:center;gap:14px;min-width:0;height:56px;min-height:56px;margin:0;padding:6px 28px;border-top:1px solid var(--line);background:transparent;overflow:visible}
+body.tablet-study #lessonFeedback{flex:1;min-width:0;margin:0;font-size:13px;color:#617a9a;line-height:1.5}
+body.tablet-study #lessonFeedback:empty:after{content:'弹对后自动继续'}
+body.tablet-study #lessonHint,body.tablet-study #workspaceKeyboard,body.tablet-study #lessonTools{min-height:44px;background:transparent;border:0;color:#536e94;font-size:13px;padding:6px 8px;white-space:nowrap}
+body.tablet-study #lessonNext{min-height:42px;font-size:13px}
+body.tablet-study #studyLesson>.study-keyboard-area{grid-row:4;height:var(--minimal-task-keys);min-height:0;padding:6px 28px 16px;background:#eff3f7;border:0;border-radius:0;position:relative;display:block}
+body.tablet-study #studyLesson .keyboard-scroll{height:100%;padding:0;min-height:0}
+body.tablet-study #lessonKeys{height:100%;min-height:0}
+body.tablet-study .key.white{height:100%;border-color:#c6d2e2;background:#fff}
+body.tablet-study .key.black{height:60%;background:#252f3b;border-color:#252f3b}
+body.tablet-study .key .c-label{font-size:10px;color:#627b9c}
+body.tablet-study .study-keyboard-toolbar{display:none}
+body.tablet-study.task-tools-open .study-keyboard-toolbar{display:flex;position:fixed;right:28px;bottom:70px;width:360px;max-width:calc(100vw - 56px);height:auto;min-height:170px;z-index:20;padding:20px;gap:14px;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 40px #26334a20;flex-direction:column;align-items:stretch}
+body.tablet-study.task-tools-open .study-keyboard-toolbar>div{display:flex;flex-wrap:wrap;gap:8px}
+body.tablet-study.task-tools-open .study-keyboard-toolbar button{font-size:13px;min-height:44px;padding:6px 10px}
+body.tablet-study.tablet-keyboard-hidden #studyLesson:not(.show-report):not(.rhythm-workspace){grid-template-rows:58px minmax(0,1fr) 56px 0}
+body.tablet-study.midi-layout:not(.midi-reverse):not(.midi-keys-visible) #studyLesson:not(.show-report):not(.rhythm-workspace){grid-template-rows:58px minmax(0,1fr) 56px 0}
+body.tablet-study .memory-host{position:absolute!important;top:auto!important;bottom:10px!important;right:28px!important;left:auto!important;width:340px!important;max-width:40%;min-width:0!important;max-height:65%!important;z-index:10;background:#fafbfcf2}
+body.tablet-study .memory-card{padding:10px 14px}
+body.tablet-study .memory-explanation p{font-size:14px}
+body.tablet-study .lesson-pause-cover{z-index:25}
+@media(max-height:820px) and (orientation:landscape){body.tablet-song{--chrome:54px;--minimal-keys:148px;--minimal-console:64px}body.tablet-study{--minimal-task-keys:160px}}
+@media(orientation:portrait){body.tablet-song{--chrome:58px;--minimal-keys:180px;--minimal-console:112px}body.tablet-song .app-header{height:58px;min-height:58px;padding:0 24px}body.tablet-song .app-header>.tablet-song-top{height:58px;min-height:58px;flex-basis:auto}body.tablet-song .song-transport{display:grid;grid-template-columns:44px 48px 100px minmax(100px,1fr) auto;grid-template-rows:48px 40px;gap:2px 10px;padding:8px 24px}body.tablet-song #songSeek{grid-column:1/5;grid-row:2;width:100%}body.tablet-song #songPosition{grid-column:5;grid-row:2;font-size:12px;min-width:0;max-width:150px}body.tablet-song #songRange{justify-content:center}body.tablet-song #songKeyPane{padding-left:24px;padding-right:24px}body.song-focus{--chrome:0px}body.song-focus .song-transport{display:flex;height:54px;min-height:54px;padding:4px 10px}body.song-focus.song-focus-controls .song-transport{max-width:calc(100% - 40px);gap:6px}body.tablet-study{--minimal-task-keys:196px}body.tablet-study #lessonStage{padding:0 5%}body.tablet-study .memory-host{max-width:45%}}
+@media(max-width:650px){body.tablet-song .app-header{padding:0 12px}body.tablet-song .app-header>.tablet-song-top{gap:5px;flex-wrap:nowrap}body.tablet-song .tablet-song-top>strong{font-size:17px}body.tablet-song .tablet-song-top>#songHandQuick{font-size:12px;padding:4px}body.tablet-song .song-transport{padding-left:12px;padding-right:12px;gap:2px 4px;grid-template-columns:36px 44px 72px minmax(80px,1fr) auto}body.tablet-song #guideSpeed{min-width:66px}body.tablet-song #songRange{font-size:11px;padding:4px}body.tablet-song #songKeysToggle{font-size:11px;min-width:55px;padding:4px}body.tablet-study #studyLesson>.lesson-top{padding:0 12px;gap:8px}body.tablet-study #studyLesson>.lesson-footer{padding:6px 12px;gap:4px}body.tablet-study .memory-host{right:12px!important;max-width:65%}}
+/* Explicit visibility beats the normal transport's ID selectors. */
+body.tablet-song.song-focus:not(.song-focus-controls) .song-transport>#songRange,body.tablet-song.song-focus:not(.song-focus-controls) .song-transport>#guideSpeed,body.tablet-song.song-focus:not(.song-focus-controls) .song-transport>#songRestart,body.tablet-song.song-focus .song-transport>#songKeysToggle{display:none}
+body.tablet-song.song-focus .song-transport>#songFocusMore{display:flex;align-items:center;justify-content:center}
+body.tablet-song #songSeek{-webkit-appearance:none;appearance:none;outline-offset:0}
+body.tablet-song #songSeek::-webkit-slider-runnable-track{height:3px;background:#c7d5e7;border-radius:2px}
+body.tablet-song #songSeek::-webkit-slider-thumb{-webkit-appearance:none;height:12px;width:12px;background:#7089a9;border:0;border-radius:50%;margin-top:-4.5px}
+body.tablet-song #songSeek:disabled{opacity:.65}
+body.tablet-study #studyLesson:not(.show-report):not(.rhythm-workspace){gap:0}
+body.tablet-study #lessonStage svg.single-note-score>circle{display:none}
+body.tablet-study #lessonKeys{max-height:none!important;height:100%!important}
+body.tablet-study #lessonKeys .white{border-radius:0}
+body.tablet-song.song-focus #songScoreScroll{inset:48px 0 64px}
+body.tablet-study.task-tools-open #studyLesson>.study-keyboard-toolbar{display:flex!important}
+body.tablet-study .lesson-pause-cover{top:58px;bottom:calc(56px + var(--minimal-task-keys));left:0;right:0}
+body.tablet-study.tablet-keyboard-hidden .lesson-pause-cover,body.tablet-study.midi-layout:not(.midi-reverse):not(.midi-keys-visible) .lesson-pause-cover{bottom:56px}
+body.tablet-song.song-focus #songScoreScroll{inset:40px 0 60px}
+body.tablet-study.midi-layout:not(.midi-reverse):not(.midi-keys-visible) #studyLesson>.study-keyboard-area{display:none}

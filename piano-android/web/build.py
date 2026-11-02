@@ -20,7 +20,7 @@ css=re.sub(r'(?<![\w-])inset:([^;}]+)',inset,css)
 def rgba(match):
  h=match[1];return 'rgba(%d,%d,%d,%.4f)'%(int(h[:2],16),int(h[2:4],16),int(h[4:6],16),int(h[6:8],16)/255)
 css=re.sub(r'#([0-9a-fA-F]{8})(?![0-9a-fA-F])',rgba,css)
-css+='\n'+(root/'song.css').read_text(encoding='utf-8')+'\n'+(root/'tablet-live.css').read_text(encoding='utf-8')+'\n'+(root/'song-guidance.css').read_text(encoding='utf-8')+'\n'+(root/'workspace-polish.css').read_text(encoding='utf-8')
+css+='\n'+(root/'song.css').read_text(encoding='utf-8')+'\n'+(root/'tablet-live.css').read_text(encoding='utf-8')+'\n'+(root/'song-guidance.css').read_text(encoding='utf-8')+'\n'+(root/'workspace-polish.css').read_text(encoding='utf-8')+'\n'+(root/'tablet-minimal.css').read_text(encoding='utf-8')
 html=(root/'shell.html').read_text(encoding='utf-8').replace('__STYLE__',css).replace('__SCRIPT__',script)
 html=html.replace('<style>','<script>'+(root/'startup.js').read_text(encoding='utf-8')+'</script><style>',1)
 out=root.parent/'native/assets/index.html';out.write_bytes(html.encode('utf-8'))

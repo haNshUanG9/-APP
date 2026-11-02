@@ -209,17 +209,17 @@
   function renderLesson() {
     const L=lesson;if(!L)return;
     const guided=L.settings.flow==='guided',reverse=L.kind==='reverse'||L.groups[L.index]?.review?.task==='staff',rhythm=L.kind==='rhythm';
-    $('studyLesson').innerHTML=`<div class="lesson-top"><div><h2>${names[L.kind]}</h2><p id="lessonStatus"></p></div><div class="actions"><button id="lessonFinish">结束</button><button id="lessonPause">${L.state==='paused'?'继续':'暂停'}</button></div></div><div class="lesson-track"><div id="lessonFill"></div></div><div class="lesson-reading"><div id="lessonStage" class="lesson-stage"></div><div class="lesson-caption"><span id="lessonCaption"></span><button id="lessonHint" ${rhythm?'hidden':''}>${guided?'帮助我记住':'转入提示练习'}</button></div></div>
+    $('studyLesson').innerHTML=`<div class="lesson-top"><button id="lessonBack" aria-label="打开导航">‹</button><div><h2>${names[L.kind]}</h2><p id="lessonStatus"></p></div><span id="lessonCounter"></span><div class="actions"><button id="lessonFinish">结束</button><button id="lessonPause">${L.state==='paused'?'继续':'暂停'}</button></div></div><div class="lesson-track"><div id="lessonFill"></div></div><div class="lesson-reading"><div id="lessonStage" class="lesson-stage"></div><div class="lesson-caption"><span id="lessonCaption"></span><button id="lessonHint" ${rhythm?'hidden':''}>${guided?'帮助我记住':'转入提示练习'}</button></div></div>
       ${rhythm?'<div class="rhythm-controls"><button id="rhythmTap" class="primary">按谱点击拍子</button><p>音符起点点击一次；休止符处不点。当前评估起拍时间，不评估按住时长。</p></div>':'<section class="study-keyboard-area"><div class="study-keyboard-toolbar"><span id="lessonKeyPrompt">点击琴键作答</span><div><button id="lessonLocal">局部键盘</button><button id="lessonFull">88键</button><button id="lessonSound">声音</button></div></div><div id="lessonKeyScroll" class="keyboard-scroll"><div id="lessonKeys" class="keyboard"></div></div></section>'}
-      <div class="lesson-footer"><p id="lessonFeedback" role="status"></p><button id="lessonNext" hidden class="primary">下一题</button></div><div id="lessonPauseCover" class="lesson-pause-cover" ${L.state==='paused'?'':'hidden'}><h3>训练已暂停</h3><p>计时已停止，回来后手动继续。</p><button id="coverResume" class="primary">继续训练</button></div>`;
-    $('lessonFinish').onclick=()=>{pause();H.confirm('结束这次训练？','已经完成的音会保存，尚未轮到的音不计错。',()=>finish(false));};
+      <div class="lesson-footer"><p id="lessonFeedback" role="status"></p><button id="lessonTools" aria-label="键盘、声音与输入设置" aria-expanded="false">•••</button><button id="lessonNext" hidden class="primary">下一题</button></div><div id="lessonPauseCover" class="lesson-pause-cover" ${L.state==='paused'?'':'hidden'}><h3>训练已暂停</h3><p>计时已停止，回来后手动继续。</p><button id="coverResume" class="primary">继续训练</button></div>`;
+    $('lessonBack').onclick=()=>window.PianoTablet?.openNavigation();$('lessonTools').onclick=()=>{const opened=document.body.classList.toggle('task-tools-open');$('lessonTools').setAttribute('aria-expanded',String(opened));};if(!rhythm){$('studyLesson').querySelector('.lesson-footer').appendChild($('lessonHint'));const toolbar=$('studyLesson').querySelector('.study-keyboard-toolbar');$('studyLesson').appendChild(toolbar);const tools=toolbar.querySelector('div');const inputButton=document.createElement('button');inputButton.textContent='输入设置';inputButton.onclick=()=>window.PianoInput?.open();tools.appendChild(inputButton);const endButton=document.createElement('button');endButton.textContent='结束本轮';endButton.onclick=()=>$('lessonFinish').click();tools.appendChild(endButton);} $('lessonFinish').onclick=()=>{pause();H.confirm('结束这次训练？','已经完成的音会保存，尚未轮到的音不计错。',()=>finish(false));};
     $('lessonPause').onclick=()=>L.state==='paused'?resume():pause();$('coverResume').onclick=resume;
     $('lessonNext').onclick=advance;$('lessonHint').onclick=hint;
     if(rhythm){$('rhythmTap').addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();press(60);});$('rhythmTap').addEventListener('click',e=>{if(e.detail===0)press(60);});}
     else{keyboard();$('lessonLocal').onclick=()=>{L.keyboardChanged=L.keyboardChanged||L.keyboardFull;L.keyboardFull=false;H.getDB().fullKeyboard=false;H.save();keyboard();};$('lessonFull').onclick=()=>{L.keyboardChanged=L.keyboardChanged||!L.keyboardFull;L.keyboardFull=true;H.getDB().fullKeyboard=true;H.save();keyboard();};$('lessonSound').onclick=()=>{H.getDB().sound=!H.getDB().sound;H.save();$('lessonSound').textContent='声音：'+(H.getDB().sound?'开':'关');};}
     renderQuestion();
     if(L.settings.focusKeys?.length)$('studyLesson').querySelector('.lesson-top h2').textContent='针对练习 · 固定音组认音';
-    if(!guided && L.state!=='paused')$('lessonCaption').textContent=clockInstruction();
+    if(!guided && L.state!=='paused'){$('lessonCaption').textContent=clockInstruction();$('lessonFeedback').textContent=clockInstruction();}
   }
   function renderQuestion(reflow=false) {
     const L=lesson,g=L.groups[L.index];if(!g)return;
@@ -227,7 +227,7 @@
     $('lessonHint').hidden=L.kind==='rhythm'||g.rest;
     if(L.kind==='reverse'||g.review?.task==='staff'){
       $('lessonStage').querySelectorAll('[data-position]').forEach(p=>{const act=()=>press(Number(p.dataset.position));p.onclick=act;p.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act();}};});
-      $('lessonCaption').textContent='看下方高亮琴键，在'+(g.targets[0].clef==='treble'?'高音':'低音')+'谱表的候选音中点对应音符。';$('lessonKeyPrompt').textContent=C.label(g.targets[0].note)+' · 点击琴键可听音';
+      $('lessonFeedback').textContent='看高亮琴键，在谱上选择对应音符。';$('lessonCaption').textContent='看下方高亮琴键，在'+(g.targets[0].clef==='treble'?'高音':'低音')+'谱表的候选音中点对应音符。';$('lessonKeyPrompt').textContent=C.label(g.targets[0].note)+' · 点击琴键可听音';
       $('lessonKeys').querySelectorAll('[data-midi]').forEach(k=>k.classList.toggle('target-key',Number(k.dataset.midi)===g.targets[0].note.midi));
       const key=$('lessonKeys').querySelector(`[data-midi="${g.targets[0].note.midi}"]`);if(key)key.scrollIntoView({block:'nearest',inline:'center'});
     } else if(L.settings.flow==='guided') {
@@ -248,7 +248,7 @@
     if(L.phraseReview)$('lessonStatus').textContent='到期复习 · 短句音高 · 在短句中确认 '+C.short(L.phraseReview.target.note);
     if(g.reviewFiller)$('lessonStatus').textContent='复习间隔 · 插入已学内容，再检查刚才的目标';
     if(g.review)$('lessonStatus').textContent='到期复习 · '+({keyboard:'看谱弹琴',staff:'琴键到谱面',phrase:'短句音高'}[g.review.task])+' · '+(g.review.confirmed?'第二次无提示确认':'第一次检查')+' · '+(L.index+1)+' / '+L.groups.length;
-    renderLessonHint();window.PianoInput?.sync();window.PianoInput?.autoContinue();
+    if($('lessonCounter')){const session=L.courseSession,stat=session?LCore.summary(session):null;$('lessonCounter').textContent=session?`${session.done+1} / ${stat.planned+session.extra}`:`${L.index+1} / ${L.groups.length}`;$('lessonCounter').title=$('lessonStatus').textContent;}if(L.kind!=='rhythm'){$('lessonHint').textContent='提示';$('lessonHint').setAttribute('aria-label',L.settings.flow==='guided'?'记忆提示':'转入提示练习');}renderLessonHint();window.PianoInput?.sync();window.PianoInput?.autoContinue();
     if(L.kind==='phrase'&&L.settings.flow==='guided'){
       const row=$('lessonStage').querySelector(`[data-event="${L.index}"]`)?.closest('.phrase-row');if(row)row.scrollIntoView({block:'nearest'});
     }
@@ -373,7 +373,7 @@
     }
     if(beat<0){$('lessonStatus').textContent=(L.phraseCourse?L.phraseCourse.labels[L.phraseCourse.state.phase]+' · ':'')+'预备四拍 · '+(Math.floor(beat+4)+1)+' / 4';$('lessonCaption').textContent='准备好，数完四拍开始。';}
     else{L.state='running';$('lessonStatus').textContent=(L.phraseCourse?L.phraseCourse.labels[L.phraseCourse.state.phase]+' · ':'')+(L.settings.flow==='assessment'?'无提示测评':'连续训练')+' · 第'+(Math.floor(beat/4)+1)+'小节 第'+(Math.floor(beat%4)+1)+'拍';$('lessonCaption').textContent=clockInstruction();}
-    $('lessonFill').style.width=Math.max(0,Math.min(100,beat/L.totalBeats*100))+'%';
+    if($('lessonCounter'))$('lessonCounter').textContent=beat<0?'预备 '+(Math.floor(beat+4)+1)+' / 4':'第 '+(Math.floor(beat/4)+1)+' 小节 · '+(Math.floor(beat%4)+1)+' 拍';$('lessonFill').style.width=Math.max(0,Math.min(100,beat/L.totalBeats*100))+'%';
     $('lessonStage').querySelectorAll('.phrase-row').forEach(row=>{const lo=Number(row.dataset.startBeat),hi=Number(row.dataset.endBeat),cursor=row.querySelector('.score-cursor');const inside=beat>=lo&&beat<hi;cursor.setAttribute('visibility',inside?'visible':'hidden');if(inside){const x=Number(row.dataset.origin|| (L.kind==='rhythm'?180:185))+(beat-lo)*Number(row.dataset.step||(L.kind==='rhythm'?104:105));cursor.setAttribute('x1',x);cursor.setAttribute('x2',x);if(row.offsetTop<$('lessonStage').scrollTop||row.offsetTop+row.offsetHeight>$('lessonStage').scrollTop+$('lessonStage').clientHeight)row.scrollIntoView({block:'nearest'});}});
     if(beat>=L.totalBeats){finish(true);return;}raf=requestAnimationFrame(tick);
   }

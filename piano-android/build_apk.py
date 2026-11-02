@@ -20,7 +20,7 @@ if not key.exists():
  run(['openssl','req','-new','-x509','-key',root/'signing/private.pem','-out',cert,'-days','10000','-subj','/CN=Piano Staff Trainer/O=Local Practice/C=CN'])
  run(['openssl','pkcs8','-topk8','-inform','PEM','-outform','DER','-in',root/'signing/private.pem','-out',key,'-nocrypt'])
  (root/'signing/private.pem').unlink()
-output=root.parent/'deliverables/五线谱识谱_平板修正版_1.5.6.apk';output.parent.mkdir(exist_ok=True)
+output=root.parent/'deliverables/五线谱识谱_简约谱台版_1.5.7.apk';output.parent.mkdir(exist_ok=True)
 run([java,'-jar',build/'lib/apksigner.jar','sign','--key',key,'--cert',cert,'--v4-signing-enabled','false','--out',output,aligned])
 run([java,'-jar',build/'lib/apksigner.jar','verify','--verbose','--print-certs',output])
 run([build/('zipalign.exe' if os.name=='nt' else 'zipalign'),'-c','4',output])

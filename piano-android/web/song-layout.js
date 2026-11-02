@@ -3,7 +3,7 @@
  'use strict';
  const NS='http://www.w3.org/2000/svg';let pages=[],viewport=null,sourceSong=null;
  const el=(tag,attrs={})=>{const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);return e;};
- function mount(engraver,song,host,scroll,zoom=1){
+ function mount(engraver,song,host,scroll,zoom=1,from=1){
   pages=[];viewport=scroll;sourceSong=song;const originals=[...host.querySelectorAll('svg')],fragments=[];
   for(const [pi,page]of engraver.GraphicSheet.MusicPages.entries()){
    const original=originals[pi];if(!original)continue;const systems=page.MusicSystems,width=original.viewBox.baseVal.width;
@@ -17,7 +17,7 @@
    for(const {system,nodes,boxes}of buckets){if(!nodes.length)continue;
     const top=Math.min(...boxes.map(b=>b.y))-6,bottom=Math.max(...boxes.map(b=>b.y+b.height))+6,svg=el('svg',{viewBox:`0 ${top} ${width} ${bottom-top}`,preserveAspectRatio:'xMidYMid meet',role:'img','aria-label':'完整钢琴谱行'}),section=document.createElement('section');section.className='song-system-page';
     for(const d of original.querySelectorAll(':scope > defs,:scope > style'))svg.appendChild(d.cloneNode(true));
-    const band=el('rect',{class:'song-measure-band',y:top+3,height:bottom-top-6,rx:4,fill:'#edf2fa'}),cursor=el('line',{class:'song-playhead',y1:top+4,y2:bottom-4,stroke:'#4a6c9b','stroke-width':1.4,visibility:'hidden'});svg.append(band,...nodes,cursor);section.appendChild(svg);
+    const band=el('rect',{class:'song-measure-band',y:top+3,height:bottom-top-6,rx:4,fill:'#edf2fa'}),cursor=el('line',{class:'song-playhead',y1:top+4,y2:bottom-4,stroke:'#7089a9','stroke-width':1,'vector-effect':'non-scaling-stroke',visibility:'hidden'});svg.append(band,cursor,...nodes);section.appendChild(svg);
     // Clef/key changes can create instruction-only graphical measures with no source bar.
     const measures=system.StaffLines[0].Measures.filter(m=>m.parentSourceMeasure).map(m=>({index:m.parentSourceMeasure.MeasureNumber,x:m.PositionAndShape.AbsolutePosition.x*10,width:m.PositionAndShape.Size.width*10}));
     if(!measures.length)continue;
@@ -25,9 +25,11 @@
    }
   }
   host.replaceChildren(...fragments);if(!pages.length)throw Error('曲谱未能生成完整谱行。');
-  const desired=Math.max(...pages.map(p=>(p.bottom-p.top)/p.width*scroll.clientWidth))*Math.max(.8,zoom),count=Math.max(1,Math.min(2,Math.floor(scroll.clientHeight/Math.max(190,desired))));
+  const desired=Math.max(...pages.map(p=>(p.bottom-p.top)/p.width*(scroll.clientWidth-56))),maxRows=innerHeight>innerWidth?3:2,count=Math.max(1,Math.min(maxRows,Math.floor((scroll.clientHeight+24)/(desired+24))));
   const gap=24,height=(scroll.clientHeight-gap*(count-1))/count;
-  for(let i=0;i<pages.length;i+=count){const spread=document.createElement('div');spread.className='song-system-screen';spread.style.height=scroll.clientHeight+'px';host.appendChild(spread);for(const p of pages.slice(i,i+count)){const natural=(p.bottom-p.top)/p.width*(host.clientWidth-40),fit=count===1?height:Math.min(height,natural+20);p.section.style.height=fit+'px';p.section.dataset.height=fit;p.screen=spread;spread.appendChild(p.section);}}
+  const start=pages.findIndex(p=>p.measures.some(m=>m.index===from));
+  const groups=[];for(let i=0;i<Math.max(0,start);i+=count)groups.push(pages.slice(i,Math.min(start,i+count)));for(let i=Math.max(0,start);i<pages.length;i+=count)groups.push(pages.slice(i,i+count));
+  for(const group of groups){const spread=document.createElement('div');spread.className='song-system-screen';spread.style.height=scroll.clientHeight+'px';host.appendChild(spread);for(const p of group){const natural=(p.bottom-p.top)/p.width*host.clientWidth,fit=count===1?height:Math.min(height,natural+4);p.section.style.height=fit+'px';p.section.dataset.height=fit;p.screen=spread;spread.appendChild(p.section);}}
   host.dataset.systemsPerView=count;scroll.scrollTop=0;
  }
  function position(beat,x=null){
