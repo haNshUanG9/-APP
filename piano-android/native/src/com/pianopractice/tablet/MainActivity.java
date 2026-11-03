@@ -10,6 +10,8 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowInsets;
+import android.widget.FrameLayout;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -51,7 +53,26 @@ public final class MainActivity extends Activity {
         if(state!=null&&state.getBoolean("pendingExport"))pendingExport=preferences.getString("pendingExport",null);else preferences.edit().remove("pendingExport").apply();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         web=new WebView(this);
-        setContentView(web);
+        // Size the WebView to the usable window. CSS receives its real content size after
+        // rotation, multi-window changes, transient system bars, cutouts and the IME.
+        FrameLayout content=new FrameLayout(this);content.setBackgroundColor(0xfffafbfc);
+        content.addView(web,new FrameLayout.LayoutParams(-1,-1));setContentView(content);
+        if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
+        content.setOnApplyWindowInsetsListener((view,insets)->{
+            if(web==null)return insets;
+            int left,top,right,bottom;
+            if(Build.VERSION.SDK_INT>=30){
+                android.graphics.Insets safe=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout()|WindowInsets.Type.systemGestures()|WindowInsets.Type.ime());
+                left=safe.left;top=safe.top;right=safe.right;bottom=safe.bottom;
+            }else{
+                left=insets.getSystemWindowInsetLeft();top=insets.getSystemWindowInsetTop();right=insets.getSystemWindowInsetRight();bottom=insets.getSystemWindowInsetBottom();
+                android.view.DisplayCutout cutout=insets.getDisplayCutout();if(cutout!=null){left=Math.max(left,cutout.getSafeInsetLeft());top=Math.max(top,cutout.getSafeInsetTop());right=Math.max(right,cutout.getSafeInsetRight());bottom=Math.max(bottom,cutout.getSafeInsetBottom());}
+            }
+            FrameLayout.LayoutParams bounds=(FrameLayout.LayoutParams)web.getLayoutParams();
+            if(bounds.leftMargin!=left||bounds.topMargin!=top||bounds.rightMargin!=right||bounds.bottomMargin!=bottom){bounds.setMargins(left,top,right,bottom);web.setLayoutParams(bounds);}
+            return insets;
+        });
+        content.requestApplyInsets();
         WebView.setWebContentsDebuggingEnabled(false);
         WebSettings settings=web.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -117,7 +138,7 @@ public final class MainActivity extends Activity {
                 if(attempt<9){probeStartup(generation,attempt+1);return;}
                 if(startupDialogShown)return;startupDialogShown=true;
                 PackageInfo engine=WebView.getCurrentWebViewPackage();
-                final String diagnostics="版本 1.5.7 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
+                final String diagnostics="版本 1.5.8 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
                 new AlertDialog.Builder(MainActivity.this).setTitle("应用启动失败").setMessage(diagnostics+"\n\n可复制诊断信息用于排查。")
                     .setNeutralButton("复制诊断",(d,w)->{ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);if(clipboard!=null)clipboard.setPrimaryClip(ClipData.newPlainText("识谱应用启动诊断",diagnostics));toast("诊断信息已复制。");})
                     .setPositiveButton("关闭",null).show();

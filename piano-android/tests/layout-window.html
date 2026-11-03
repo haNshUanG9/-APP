@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>生产布局窗口检查</title>
+<style>html,body{margin:0;padding:0;background:#dce3ed}iframe{display:block;border:0;max-width:none}</style>
+<iframe id="layoutFrame" title="当前构建的生产页面"></iframe>
+<button id="runLayoutChecks" style="margin:16px;padding:12px">检查当前布局</button>
+<pre id="layoutChecks" style="margin:24px;white-space:pre-wrap;font:14px monospace" aria-label="布局检查结果"></pre>
+<script src="layout-checks.js"></script>
+<script>
+const params=new URLSearchParams(location.search),frame=document.getElementById('layoutFrame');
+frame.width=Number(params.get('w')||1280);frame.height=Number(params.get('h')||800);
+frame.src='../native/assets/index.html';
+</script>

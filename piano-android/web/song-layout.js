@@ -25,11 +25,12 @@
    }
   }
   host.replaceChildren(...fragments);if(!pages.length)throw Error('曲谱未能生成完整谱行。');
-  const desired=Math.max(...pages.map(p=>(p.bottom-p.top)/p.width*(scroll.clientWidth-56))),maxRows=innerHeight>innerWidth?3:2,count=Math.max(1,Math.min(maxRows,Math.floor((scroll.clientHeight+24)/(desired+24))));
+  const padding=getComputedStyle(host),contentWidth=host.clientWidth-parseFloat(padding.paddingLeft)-parseFloat(padding.paddingRight);
+  const desired=Math.max(...pages.map(p=>(p.bottom-p.top)/p.width*contentWidth)),maxRows=scroll.clientHeight>=900?3:2,count=Math.max(1,Math.min(maxRows,Math.floor((scroll.clientHeight+24)/(desired+24))));
   const gap=24,height=(scroll.clientHeight-gap*(count-1))/count;
   const start=pages.findIndex(p=>p.measures.some(m=>m.index===from));
   const groups=[];for(let i=0;i<Math.max(0,start);i+=count)groups.push(pages.slice(i,Math.min(start,i+count)));for(let i=Math.max(0,start);i<pages.length;i+=count)groups.push(pages.slice(i,i+count));
-  for(const group of groups){const spread=document.createElement('div');spread.className='song-system-screen';spread.style.height=scroll.clientHeight+'px';host.appendChild(spread);for(const p of group){const natural=(p.bottom-p.top)/p.width*host.clientWidth,fit=count===1?height:Math.min(height,natural+4);p.section.style.height=fit+'px';p.section.dataset.height=fit;p.screen=spread;spread.appendChild(p.section);}}
+  for(const group of groups){const spread=document.createElement('div');spread.className='song-system-screen';spread.style.height=scroll.clientHeight+'px';host.appendChild(spread);for(const p of group){const natural=(p.bottom-p.top)/p.width*contentWidth,fit=count===1?height:Math.min(height,natural+4);p.section.style.height=fit+'px';p.section.dataset.height=fit;p.screen=spread;spread.appendChild(p.section);}}
   host.dataset.systemsPerView=count;scroll.scrollTop=0;
  }
  function position(beat,x=null){
