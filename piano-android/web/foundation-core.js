@@ -6,7 +6,7 @@ const FoundationCore=(()=>{
  const LABELS={demo:'认识新内容',identify:'独立认音',listen:'有参照听辨',echo:'听后跟弹',read:'先读准原句',perform:'同句慢速跟拍',transfer:'变化乐句检查',done:'路线完成'};
  const int=(n,max=100000)=>Number.isInteger(n)&&n>=0?Math.min(n,max):0;
  const copy=x=>JSON.parse(JSON.stringify(x)),key=t=>t.clef+':'+t.midi,validSource=s=>SOURCES.includes(s);
- const track=()=>({unit:0,phase:'demo',learning:Array(N).fill(0),independent:Array(N).fill(0),listening:Array(N).fill(0),echo:Array(N).fill(0),recognition:{},sessions:{},passed:[],chosen:[],serial:0,retries:[],current:null,history:[],failures:0,echoFailures:0,difficulty:'',tempo:60,ticket:null,lastResult:null});
+ const track=()=>({unit:0,phase:'demo',learning:Array(N).fill(0),independent:Array(N).fill(0),listening:Array(N).fill(0),listeningOrders:{},echo:Array(N).fill(0),recognition:{},sessions:{},passed:[],chosen:[],serial:0,retries:[],current:null,history:[],failures:0,echoFailures:0,difficulty:'',tempo:60,ticket:null,lastResult:null});
  const defaults=()=>({version:2,tracks:{touch:track(),midi:track()}}),lesson=t=>LESSONS[Math.min(t.unit,N-1)];
  function requirements(t){const l=lesson(t);return Object.fromEntries(l.pool.map(p=>[key(p),l.pool.length===1?2:l.newTarget&&key(p)===key(l.newTarget)?4:2]));}
  const learned=t=>t.recognition[lesson(t).id]||(t.recognition[lesson(t).id]={});
@@ -30,6 +30,7 @@ const FoundationCore=(()=>{
   for(const source of SOURCES){const r=raw.tracks?.[source];if(!r||typeof r!=='object')continue;const t=d.tracks[source],legacy=raw.version!==2;
    t.unit=int(r.unit,N);t.phase=PHASES.includes(r.phase)?r.phase:'demo';if(legacy&&t.unit>=3){t.unit=2;t.phase='read';}if(t.unit===N)t.phase='done';else if(t.phase==='done')t.phase='demo';
    for(const field of ['learning','independent','listening','echo'])t[field]=Array.from({length:N},(_,i)=>int(r[field]?.[i],10000));
+   for(const l of LESSONS){const order=r.listeningOrders?.[l.id];if(Array.isArray(order)&&order.length===l.listening.length&&new Set(order).size===order.length&&order.every(n=>Number.isInteger(n)&&n>=0&&n<order.length))t.listeningOrders[l.id]=order.slice();}
    for(const l of LESSONS){const row=r.recognition?.[l.id];if(row&&typeof row==='object')t.recognition[l.id]=Object.fromEntries(l.pool.map(p=>[key(p),int(row[key(p)],10000)]));}
    if(legacy){for(let i=0;i<Math.min(3,t.unit+1);i++){const l=LESSONS[i];t.recognition[l.id]=Object.fromEntries(l.pool.map(p=>[key(p),p.midi===l.newTarget?.midi?t.independent[i]:Math.min(t.independent[Math.max(0,i-1)],2)]));}}
    t.passed=(Array.isArray(r.passed)?r.passed:[]).filter(id=>LESSONS.some(l=>l.id===id)).slice(0,N);t.chosen=(Array.isArray(r.chosen)?r.chosen:[]).filter(id=>LESSONS.some(l=>l.id===id)).slice(0,N);
@@ -52,7 +53,11 @@ const FoundationCore=(()=>{
   if(kind==='identify'){
    const counts=learned(t),req=requirements(t),remaining=l.pool.filter(p=>(counts[key(p)]||0)<req[key(p)]),pool=remaining.length?remaining:l.pool;
    let options=pool;const previous=t.lastTarget;if(pool.length>1)options=pool.filter(p=>key(p)!==previous);const n=Math.min(options.length-1,Math.floor(Math.max(0,Math.min(.99999,Number(random())||0))*options.length)),p=options[n];q.clef=p.clef;q.target=p.midi;t.lastTarget=key(p);
-  }else if(kind==='listen'){const p=l.listening[t.listening[t.unit]%l.listening.length];Object.assign(q,p,{target:p.reference});}
+  }else if(kind==='listen'){
+   t.listeningOrders=t.listeningOrders||{};let order=t.listeningOrders[l.id];
+   if(!order){order=l.listening.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.min(i,Math.floor(Math.max(0,Math.min(.99999,Number(random())||0))*(i+1)));[order[i],order[j]]=[order[j],order[i]];}t.listeningOrders[l.id]=order;}
+   const p=l.listening[order[t.listening[t.unit]%order.length]];Object.assign(q,p,{target:p.reference});
+  }
   else {const full=l.echoes[t.echo[t.unit]%l.echoes.length].slice();q.clef=l.echoClef;q.target=full[0];if(t.echoFailures>=2){q.sequence=full.slice(0,1);q.fullSequence=full;q.remedial=true;}else q.sequence=full;}
   t.current=q;return q;
  }

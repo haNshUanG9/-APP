@@ -31,7 +31,7 @@
   window.LayoutChecks={width:w.innerWidth,height:w.innerHeight,screen:d.body.dataset.screen,checks,passed:checks.every(c=>c.ok)};
   document.getElementById('layoutChecks').textContent=JSON.stringify(window.LayoutChecks,null,2);
  }
- frame.addEventListener('load',()=>{new MutationObserver(inspect).observe(frame.contentDocument.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','data-screen','aria-expanded']});inspect();});
+ frame.addEventListener('load',()=>{if(!frame.contentDocument?.body)return;new MutationObserver(inspect).observe(frame.contentDocument.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','data-screen','aria-expanded']});inspect();});
  window.addEventListener('resize',inspect);
  document.getElementById('runLayoutChecks').onclick=inspect;
 })();

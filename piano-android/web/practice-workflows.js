@@ -1,0 +1,26 @@
+/* Preparation previews, actionable progress and contextual tools share task rules. */
+(()=>{
+ 'use strict';const H=PianoHost,$=id=>document.getElementById(id),esc=SongCore.esc;
+ function score(ex){
+  if(!ex?.events?.length)return '';const cs=ex.clefs||['treble'],dual=cs.length>1,w=720,h=dual?310:200,base=c=>PianoCore.parse(c==='bass'?'G2':'E4').index;
+  let svg='';cs.forEach((c,i)=>{const bottom=dual?115+i*145:128;for(let j=0;j<5;j++)svg+='<path d="M20 '+(bottom-j*16)+'H700" stroke="#7b879b" fill="none"/>';svg+='<path d="'+H.glyphs[c].path+'" transform="translate(30 '+(bottom-(c==='bass'?48:16))+') scale(.064 -.064)" fill="#18212b"/>';
+   for(const e of ex.events){const x=115+e.beat/Math.max(4,ex.totalBeats)*560;if(e.rest){svg+='<path d="'+H.glyphs[e.duration>=2?'rest2':'rest1'].path+'" transform="translate('+x+' '+(bottom-32)+') scale(.05 -.05)" fill="#18212b"/>';continue;}for(const t of e.targets.filter(t=>t.clef===c)){const delta=t.note.index-base(c),y=bottom-delta*8;for(const k of PianoCore.ledgerOffsets(delta))svg+='<path d="M'+(x-13)+' '+(bottom-k*8)+'h26" stroke="#18212b"/>';svg+='<ellipse cx="'+x+'" cy="'+y+'" rx="9" ry="6" fill="'+(e.duration>=2?'#fafbfc':'#18212b')+'" stroke="#18212b" transform="rotate(-18 '+x+' '+y+')"/>';if(e.duration<4)svg+='<path d="M'+(x+8)+' '+y+'v-40" stroke="#18212b" stroke-width="1.7"/>';if(e.duration===.5)svg+='<path d="'+H.glyphs.flagUp.path+'" transform="translate('+(x+8)+' '+(y-40)+') scale(.045 -.045)" fill="#18212b"/>';}}
+  });return '<svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="本轮实际乐句预览">'+svg+'</svg>';
+ }
+ window.PianoPreparation={score};
+ function topics(){const root=$('topics');if(!root)return;const s={...H.getDB().study.settings,clef:$('topicClef').value},source=window.PianoInput?.isMidi()?'midi':'touch';
+  for(const row of root.querySelectorAll('.topic-row')){row.onclick=e=>{if(!e.target.closest('button'))row.querySelector('[data-topic]')?.click();};const kind=row.dataset.course;if(['anchors','contrast','ledger','reverse'].includes(kind)){const info=LearningCore.info(H.getDB().study.learning,kind,s.clef==='dual'?'treble':s.clef,source),hint=row.querySelector('.preparation-target')||document.createElement('small');hint.className='preparation-target';hint.textContent='当前单元：'+info.unit.title;row.querySelector('h3').after(hint);}}
+  const options=root.querySelector('.topic-options');if(options&&!options.querySelector(':scope > h3')){const title=document.createElement('h3');title.textContent='本轮条件';options.prepend(title);root.addEventListener('change',topics);}
+ }
+ function reading(){const form=$('reading')?.querySelector('.reading-form');if(!form||form.querySelector('#readingMore'))return;const more=document.createElement('details');more.id='readingMore';more.className='preparation-more';more.innerHTML='<summary>音型、节奏与更多条件</summary><div class="preparation-more-fields"></div>';
+  for(const id of ['studyNotes','studyDifficulty','studyPattern','studyRhythm','studyDual']){const label=$(id)?.closest('label');if(label)more.lastElementChild.appendChild(label);}form.querySelector('#studyLaunch').before(more);
+  const info=$('phraseCourseInfo');if(info)form.querySelector('#studyLaunch').before(info);
+  const update=()=>{const progressive=$('studyCourse').value==='progressive';more.hidden=progressive;$('studyFlow').closest('label').hidden=progressive;};form.addEventListener('change',update);update();
+ }
+ function today(){const list=$('today')?.querySelector('.daily-steps');if(!list||$('dailyEar'))return;const li=document.createElement('li');li.innerHTML='<span class="route-icon">'+PianoStudio.icon('rhythm')+'</span><div><h3>听音训练</h3><p>方向 · 轮廓 · 听后复现</p></div><button id="dailyEar" aria-label="打开听音训练">'+PianoStudio.icon('arrow')+'</button>';list.appendChild(li);$('dailyEar').onclick=()=>PianoEar.open();}
+ function progress(){const root=$('progressPage');if(!root||$('skillEvidence'))return;const d=H.getDB().study,source=window.PianoInput?.isMidi()?'midi':'touch',ear=Object.values(d.ear?.tracks?.[source]||{}),memory=Object.entries(d.learning.memory).filter(([k])=>k.split('|')[1]===source).map(([,v])=>v),rhythm=Object.entries(d.learning.rhythm).filter(([k])=>k.endsWith('|'+source)).map(([,v])=>v),box=document.createElement('section');box.id='skillEvidence';box.innerHTML='<h3>本次完成，与之后还记得</h3><div class="evidence-grid"><div><strong>识谱</strong><span>'+memory.filter(m=>m.successes>=4).length+' 个音有独立练习证据</span><small>'+memory.filter(m=>m.stage>=2&&!m.relearning).length+' 个音通过后续复习</small></div><div><strong>听音</strong><span>'+ear.filter(m=>m.passed).length+' 层本次独立通过</span><small>'+ear.filter(m=>m.retained>0).length+' 层通过延后回测</small></div><div><strong>节奏</strong><span>'+rhythm.reduce((n,r)=>n+(r.clean||0),0)+' 次课程阶段通过</span><small>按速度与输入条件保留证据</small></div></div><p>这里分别呈现各项能力，不把练习次数或不同输入的分数相加。</p>';
+  root.querySelector('.page-head')?.after(box);const song=root.querySelector('.song-home-card');if(song)box.after(song);
+ }
+ function enhance(){const screen=document.body.dataset.screen;if(screen==='today')today();if(screen==='topics')topics();if(screen==='reading')reading();if(screen==='progressPage')progress();}
+ new MutationObserver(enhance).observe(document.body,{attributes:true,attributeFilter:['data-screen']});enhance();
+})();

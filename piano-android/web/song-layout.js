@@ -1,10 +1,10 @@
 /* The engraver owns notation; this adapter presents complete systems without stretching glyphs. */
 (()=>{
  'use strict';
- const NS='http://www.w3.org/2000/svg';let pages=[],viewport=null,sourceSong=null;
+ const NS='http://www.w3.org/2000/svg';let pages=[],viewport=null,sourceSong=null,picking=null;
  const el=(tag,attrs={})=>{const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);return e;};
  function mount(engraver,song,host,scroll,zoom=1,from=1){
-  pages=[];viewport=scroll;sourceSong=song;const originals=[...host.querySelectorAll('svg')],fragments=[];
+  endRange();pages=[];viewport=scroll;sourceSong=song;const originals=[...host.querySelectorAll('svg')],fragments=[];
   for(const [pi,page]of engraver.GraphicSheet.MusicPages.entries()){
    const original=originals[pi];if(!original)continue;const systems=page.MusicSystems,width=original.viewBox.baseVal.width;
    const buckets=systems.map(system=>({system,nodes:[],boxes:[]}));
@@ -39,8 +39,16 @@
   const m=page.measures.find(m=>m.index===measure.index),px=x??m.x+m.width*Math.max(0,Math.min(1,(beat-measure.start)/(measure.end-measure.start)));page.band.setAttribute('x',m.x);page.band.setAttribute('width',Math.max(4,m.width));page.cursor.setAttribute('x1',px);page.cursor.setAttribute('x2',px);
   const top=page.screen.offsetTop,bottom=top+page.screen.offsetHeight;if(top<viewport.scrollTop-1||bottom>viewport.scrollTop+viewport.clientHeight+1)viewport.scrollTop=top;
  }
+ function endRange(){picking=null;for(const p of pages)p.svg.querySelectorAll('[data-range-pick]').forEach(e=>e.remove());document.getElementById('scoreRangeTools')?.remove();}
+ function beginRange(apply){
+  endRange();if(!pages.length)return;let first=null;picking=apply;
+  const tools=document.createElement('div');tools.id='scoreRangeTools';tools.innerHTML='<p role="status">轻点起始小节，再点结束小节。</p><button>取消选段</button>';document.getElementById('songsPage').appendChild(tools);tools.querySelector('button').onclick=endRange;
+  const select=(bar,rect)=>{if(!picking)return;if(first===null){first=bar;rect.setAttribute('stroke','#526d8f');rect.setAttribute('stroke-width','2');tools.querySelector('p').textContent='起点：第 '+bar+' 小节 · 再点结束小节';}else{const fn=picking;endRange();fn({from:Math.min(first,bar),to:Math.max(first,bar),loop:true});}};
+  for(const p of pages)for(const m of p.measures){const rect=el('rect',{'data-range-pick':m.index,x:m.x,y:p.top+2,width:Math.max(4,m.width),height:p.bottom-p.top-4,fill:'transparent',tabindex:'0',role:'button','aria-label':'选择第 '+m.index+' 小节'});rect.style.cursor='pointer';rect.onclick=()=>select(m.index,rect);rect.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();select(m.index,rect);}};p.svg.appendChild(rect);}
+  const activePage=pages.find(p=>p.section.classList.contains('current-system'))||pages[0];activePage.svg.querySelector('[data-range-pick]')?.focus({preventScroll:true});
+ }
  function clearMarks(){for(const p of pages)p.svg.querySelectorAll('[data-feedback-marker]').forEach(e=>e.remove());}
  function mark(beat,pitch,type){const m=sourceSong?.measures.find(m=>beat<m.end),p=pages.find(p=>p.measures.some(x=>x.index===m?.index));if(!p)return;const measure=p.measures.find(x=>x.index===m.index),x=measure.x+measure.width*(beat-m.start)/(m.end-m.start);p.svg.appendChild(el('circle',{'data-feedback-marker':type,cx:x,cy:p.bottom-4,r:2.8,fill:type==='hint'||type==='timing'?'#b37c20':'#b33e4b','aria-label':pitch+' '+type}));}
  function state(){return pages.map(p=>({from:+p.section.dataset.from,to:+p.section.dataset.to,height:p.section.clientHeight,rect:p.section.getBoundingClientRect().toJSON()}));}
- window.PianoScoreLayout={mount,position,state,mark,clearMarks,reset:()=>{pages=[];viewport=null;sourceSong=null;}};
+ window.PianoScoreLayout={mount,position,state,mark,clearMarks,beginRange,endRange,isPicking:()=>!!picking,reset:()=>{endRange();pages=[];viewport=null;sourceSong=null;}};
 })();

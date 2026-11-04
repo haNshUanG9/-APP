@@ -2,7 +2,7 @@
 (()=>{
  'use strict';
  const $=id=>document.getElementById(id),body=document.body,rail=document.querySelector('.app-rail');
- const names={today:'识谱练习室',topics:'专项练习',reading:'短句读谱',foundationPage:'循序课程',rhythmPage:'节奏训练',songsPage:'曲谱工作区',progressPage:'进步记录',practice:'自由识谱',studyLesson:'正在练习',help:'学习说明',profiles:'音符档案',mistakes:'错题复习',history:'练习记录',result:'练习结果',notePicker:'选择练习音'};
+ const names={today:'识谱练习室',topics:'专项练习',reading:'短句读谱',foundationPage:'循序课程',rhythmPage:'节奏训练',earPage:'听音训练',songsPage:'曲谱工作区',progressPage:'进步记录',practice:'自由识谱',studyLesson:'正在练习',help:'学习说明',profiles:'音符档案',mistakes:'错题复习',history:'练习记录',result:'练习结果',notePicker:'选择练习音'};
  let queued=false,lastSize='',navFocus=null,previewOwner=null;
  const hiddenKeyboards=new Set(),keyboardButton=document.createElement('button');
  keyboardButton.id='workspaceKeyboard';keyboardButton.type='button';keyboardButton.hidden=true;$('workspaceInput').before(keyboardButton);
@@ -37,7 +37,7 @@
  function text(el,value){if(el&&el.textContent!==value)el.textContent=value;}
  function decorate(){
   queued=false;const screen=body.dataset.screen||'today',study=screen==='studyLesson'&&!$('studyLesson').classList.contains('show-report'),task=study||screen==='practice';
-  body.classList.toggle('tablet-task',task);body.classList.toggle('tablet-rhythm',study&&$('studyLesson').classList.contains('rhythm-workspace'));body.classList.toggle('tablet-foundation',screen==='foundationPage'&&$('foundationPage').dataset.view==='session');
+  body.classList.toggle('tablet-ear',screen==='earPage'&&!!$('earPage').querySelector('.ear-session'));body.classList.toggle('tablet-task',task);body.classList.toggle('tablet-rhythm',study&&$('studyLesson').classList.contains('rhythm-workspace'));body.classList.toggle('tablet-foundation',screen==='foundationPage'&&$('foundationPage').dataset.view==='session');
   text(document.querySelector('.app-header h1'),screen==='songsPage'?(window.PianoSongs?.getState().song?.title||'我的曲谱'):names[screen]||'识谱练习室');$('workspaceBack').hidden=screen==='today';
   const midi=window.PianoInput?.isMidi();text($('workspaceInputLabel'),midi?'实体琴已连接':'触屏练习');$('workspaceInput').classList.toggle('connected',!!midi);$('workspaceInput').title=$('midiNotes')?.textContent||'实体琴与输入设置';
   body.classList.toggle('tablet-study',study&&!$('studyLesson').classList.contains('rhythm-workspace'));if(body.classList.contains('tablet-study')){const footer=$('studyLesson').querySelector('.lesson-footer');if(footer&&keyboardButton.parentElement!==footer)footer.appendChild(keyboardButton);}else{if(keyboardButton.parentElement!==document.querySelector('.app-header'))$('workspaceInput').before(keyboardButton);body.classList.remove('task-tools-open');}syncKeyboard();

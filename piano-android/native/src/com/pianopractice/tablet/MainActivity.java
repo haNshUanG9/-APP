@@ -52,6 +52,7 @@ public final class MainActivity extends Activity {
         preferences=getSharedPreferences("piano-records",MODE_PRIVATE);
         if(state!=null&&state.getBoolean("pendingExport"))pendingExport=preferences.getString("pendingExport",null);else preferences.edit().remove("pendingExport").apply();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if(Build.VERSION.SDK_INT>=33)getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,()->handleBack());
         web=new WebView(this);
         // Size the WebView to the usable window. CSS receives its real content size after
         // rotation, multi-window changes, transient system bars, cutouts and the IME.
@@ -138,7 +139,7 @@ public final class MainActivity extends Activity {
                 if(attempt<9){probeStartup(generation,attempt+1);return;}
                 if(startupDialogShown)return;startupDialogShown=true;
                 PackageInfo engine=WebView.getCurrentWebViewPackage();
-                final String diagnostics="版本 1.5.8 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
+                final String diagnostics="版本 1.5.9 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
                 new AlertDialog.Builder(MainActivity.this).setTitle("应用启动失败").setMessage(diagnostics+"\n\n可复制诊断信息用于排查。")
                     .setNeutralButton("复制诊断",(d,w)->{ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);if(clipboard!=null)clipboard.setPrimaryClip(ClipData.newPlainText("识谱应用启动诊断",diagnostics));toast("诊断信息已复制。");})
                     .setPositiveButton("关闭",null).show();
@@ -152,7 +153,8 @@ public final class MainActivity extends Activity {
     @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();if(midi!=null)midi.foreground(true);immersive();}
     @Override protected void onSaveInstanceState(Bundle out){if(pendingExport!=null){preferences.edit().putString("pendingExport",pendingExport).apply();out.putBoolean("pendingExport",true);}super.onSaveInstanceState(out);}
     @Override protected void onDestroy(){if(midi!=null){midi.destroy();midi=null;}if(web!=null){web.removeJavascriptInterface("PianoAndroid");web.destroy();web=null;}super.onDestroy();}
-    @Override public void onBackPressed(){
+    @Override public void onBackPressed(){handleBack();}
+    private void handleBack(){
         if(web==null||leaving)return;
         web.evaluateJavascript("window.PianoBack?window.PianoBack():false",result->{
             if("true".equals(result)||isFinishing()||isDestroyed())return;

@@ -1,0 +1,43 @@
+/* Listening, comparison and reproduction share one stable tablet task surface. */
+(()=>{
+ 'use strict';const C=EarCore,H=PianoHost,$=id=>document.getElementById(id),esc=SongCore.esc;
+ let session=null,question=null,playing=false,playToken=0,timer=0,view=false,held=new Set(),voices=new Set();
+ const data=()=>H.getDB().study.ear||(H.getDB().study.ear=C.defaults()),source=()=>window.PianoInput?.isMidi()?'midi':'touch';
+ const level=()=>C.LEVELS.find(l=>l.id===session.level);
+ function silence(){playToken++;playing=false;for(const v of voices)v.stop();voices.clear();}
+ function map(){const s=source(),r=C.recommend(data(),s);$('earPage').innerHTML='<div class="page-head"><div><h2>听音训练</h2><p>先听关系，再把它弹出来；学习与独立检查分别记录。</p></div><button id="earContinue" class="primary">'+(r.review?'开始到期回测':'继续推荐训练')+'</button></div><div class="ear-levels">'+C.LEVELS.map((l,i)=>{const p=data().tracks[s][l.id];return '<button data-ear-level="'+l.id+'"><small>'+String(i+1).padStart(2,'0')+' · '+(p?.retained?'延后检查已保持':p?.passed?'本次已独立通过':'认识与练习')+'</small><strong>'+l.title+'</strong><span>'+l.goal+'</span></button>';}).join('')+'</div><p class="ear-map-note">每轮8题：前4题建立关系，后4题收起帮助独立检查。通过不等于长期掌握，到期后再回测。后面的训练可以预习，不会把前面标成掌握。</p>';
+  $('earContinue').onclick=()=>start(r.level,r.review);$('earPage').querySelectorAll('[data-ear-level]').forEach(b=>b.onclick=()=>start(b.dataset.earLevel,false));
+ }
+ function open(){if(session?.active){H.showPage('earPage');return;}window.PianoStudy.stopForRhythm(()=>{session=null;question=null;H.showPage('earPage');});}
+ function start(id,review=false){silence();clearTimeout(timer);session={active:true,level:id,source:source(),review,answers:[],interrupted:false,paused:false,index:0};next();}
+ function next(){clearTimeout(timer);held.clear();if(session.index===8){finish(true);return;}question=C.question(session.level,session.index,Math.random,session.index>=4);Object.assign(question,{played:false,replays:0,hint:false,failed:false,response:0,done:false});render();}
+ function render(){if(!view||!session?.active)return;const l=level(),keyTask=['keyboard','melody'].includes(session.level),q=question;
+  $('earPage').innerHTML='<section class="ear-session"><div class="ear-top"><div><button id="earBack" aria-label="结束本轮并返回听音路线">‹</button><h2>'+l.title+'</h2><span>'+(q.check?(session.level==='keyboard'?'同音域独立检查':'变化材料独立检查'):'建立关系与巩固')+' · '+(session.index+1)+' / 8</span></div><div><button id="earPause">'+(session.paused?'继续':'暂停')+'</button><button id="earEnd">结束本轮</button></div></div><div class="ear-main"><small>'+ (q.check?'收起帮助，检查能否应用':'这一题只关注一个关系')+'</small><h3>'+l.goal+'</h3><button id="earPlay" class="ear-listen" '+(playing||session.paused||q.done?'disabled':'')+'>'+(playing?'正在播放…':q.played?'再听一次':'听题目')+'</button><p id="earMessage" role="status">'+(session.paused?'训练已暂停，继续后请重听。':q.done?'已完成，稍后自动继续。':q.played?keyTask?'按顺序弹出听到的音。':'选择你听到的关系。':session.level==='keyboard'?'第一音是中央C（C4），第二音是目标。':'听完后再作答。')+'</p><div class="ear-answers">'+(!keyTask?q.choices.map(([k,text])=>'<button data-ear-answer="'+k+'" '+(!q.played||playing||session.paused||q.done?'disabled':'')+'>'+text+'</button>').join(''):'')+'</div>'+(keyTask?'<p class="ear-reference">参照 C4 · '+(session.level==='melody'?'本题 '+q.pitches.length+' 音，已弹 '+q.response+' 音':'目标范围 C4—G4')+'</p><div class="ear-keys">'+[60,62,64,65,67].map(n=>'<button data-ear-key="'+n+'" aria-label="'+PianoCore.midiName(n)+'">'+PianoCore.midiName(n)+'</button>').join('')+'</div>':'')+'</div><div class="ear-bottom"><button id="earHint" '+(q.done||session.paused?'disabled':'')+'>记忆方法</button><p>'+(q.hint?l.tip:'重听会记录次数；使用帮助后，需另做无提示检查。')+'</p></div></section>';
+  $('earBack').onclick=()=>finish(false);$('earPlay').onclick=play;$('earHint').onclick=()=>{if(q.done||session.paused)return;q.hint=true;render();};$('earPause').onclick=()=>{if(session.paused){session.paused=false;render();if(q.done)queue();}else pause();};$('earEnd').onclick=()=>finish(false);
+  $('earPage').querySelectorAll('[data-ear-answer]').forEach(b=>b.onclick=()=>answer(b.dataset.earAnswer));
+  $('earPage').querySelectorAll('[data-ear-key]').forEach(b=>{const n=+b.dataset.earKey;b.onpointerdown=e=>{if(session.source==='midi')return;e.preventDefault();b.setPointerCapture?.(e.pointerId);held.add(n);answer(n);};b.onpointerup=b.onpointercancel=()=>{held.delete(n);queue();};b.onclick=e=>{if(e.detail===0&&session.source==='touch')answer(n);};});
+ }
+ async function play(){if(playing||session.paused||question.done)return;const q=question;if(q.played)q.replays++;silence();const token=playToken;playing=true;render();
+  try{const ctx=await PianoAudio.prepare(q.sequences.flat());if(token!==playToken||!session.active||document.hidden||ctx.state!=='running')throw Error('paused');let beat=0;for(const seq of q.sequences){for(const n of seq){const v=PianoAudio.note(n,{at:ctx.currentTime+.08+beat*.6,duration:.42,volume:.45});voices.add(v);beat++;}beat+=.8;}await new Promise(r=>setTimeout(r,beat*600+100));if(token!==playToken||!session.active||document.hidden)return;playing=false;voices.clear();q.played=true;render();}catch(e){if(token===playToken){playing=false;render();$('earMessage').textContent='声音未能启动，请检查音量后重新听。';}}
+ }
+ function answer(value){if(!session?.active||session.paused||playing||!question.played||question.done||H.modalOpen()||window.PianoInput?.panelOpen?.())return;const q=question,expected=q.pitches.length?q.pitches[q.response]:q.answer;if(q.pitches.length&&session.source==='touch'){try{const v=PianoAudio.note(value,{duration:.35,volume:.4});voices.add(v);}catch(e){}};
+  if(value!==expected){q.failed=true;q.response=0;$('earMessage').textContent=q.pitches.length?'顺序或音高还没对上，重听后从第一个音再来。':'再哼住参照音，重听两个声音之间的关系。';return;}
+  if(q.pitches.length&&++q.response<q.pitches.length){$('earMessage').textContent='已弹 '+q.response+' / '+q.pitches.length+' 音。';return;}
+  q.done=true;session.answers.push({correct:true,first:!q.failed,check:q.check,hint:q.hint,replays:q.replays});H.save();$('earMessage').textContent='已完成；松开琴键后自动继续。';queue();
+ }
+ function queue(){clearTimeout(timer);if(!session?.active||session.paused||!question?.done||held.size)return;const owner=session,q=question;timer=setTimeout(()=>{if(session===owner&&question===q&&!session.paused&&!document.hidden&&!held.size){session.index++;next();}},900);}
+ function pause(){clearTimeout(timer);silence();held.clear();if(session?.active){session.paused=true;if(question&&!question.done)question.played=false;if(view)render();}}
+ function finish(complete){clearTimeout(timer);silence();held.clear();if(!session?.active)return;const r={id:'ear-'+Date.now().toString(36),at:Date.now(),level:session.level,source:session.source,review:session.review,answers:session.answers.slice(),complete,interrupted:session.interrupted};session.active=false;r.result=C.observe(data(),r);if(r.answers.length){data().reports.push(r);data().reports=data().reports.slice(-60);H.save();}if(!view)return;
+  const checks=r.answers.filter(a=>a.check),first=checks.filter(a=>a.first&&!a.hint).length;
+  $('earPage').innerHTML='<section class="ear-result"><small>听音练后回顾</small><h2>'+(complete?r.result?.passed?'本次独立检查通过':'这一层还需要巩固':'本轮提前结束')+'</h2><p>'+(!r.answers.length?'尚未作答，不形成成绩。':complete?'独立检查 '+first+' / '+checks.length+' 题首次无提示完成。':'已完成 '+r.answers.length+' 题，未完成部分不计错。')+'</p><p>'+(r.result?.retained?'到期后仍能完成，保持证据已更新。':r.result?.passed?'接下来可以继续下一层；到期后再检查是否记住。':'先重听关键差别，再用另一轮材料检查。')+'</p><div><button id="earAgain" class="primary">再练这一层</button><button id="earMap">查看训练路线</button></div></section>';
+  $('earAgain').onclick=()=>start(r.level,r.review);$('earMap').onclick=()=>{session=null;map();};
+ }
+ window.PianoEar={open,isActive:()=>!!session?.active,inputSource:()=>session?.source||source(),pause,midiReady:()=>false,
+  midiEvent:e=>{if(!view||!session?.active||session.source!=='midi')return;if(e.type==='reset'){held.clear();queue();}else if(e.type==='on'){if(!held.has(e.note)){held.add(e.note);answer(e.note);}}else{held.delete(e.note);queue();}},
+  stopForInputChange:()=>{finish(false);},stopForStudy:fn=>{finish(false);fn();},beforeNavigate:name=>{if(name!=='earPage'&&session?.active){session.interrupted=true;finish(false);}},
+  navigate:name=>{view=name==='earPage';if(view){if(session?.active)render();else map();document.querySelectorAll('.nav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page==='topics'));}},
+  back:()=>{if(!view)return false;if(session?.active){finish(false);return true;}H.showPage('topics');return true;}
+ };
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+ window.addEventListener('pianoinputchange',()=>{if(view&&!session?.active)map();});
+})();

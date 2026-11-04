@@ -6,7 +6,7 @@ const StudyCore = (() => {
   const natural = n => Number.isInteger(n) && n >= 21 && n <= 108 && C.SEMITONES.includes(n % 12);
   const keyValid = k => /^(treble|bass):[A-G][2-6]$/.test(k);
   const RC=typeof RhythmCore==='undefined'?null:RhythmCore;
-  const defaults = () => ({version:3,foundation:typeof FoundationCore==='undefined'?{}:FoundationCore.defaults(),learning:typeof LearningCore==='undefined'?{}:LearningCore.defaults(),rhythm:RC?RC.defaults():{},notes:{},confusions:{},reports:[],settings:{clef:'treble',input:'touch',course:'progressive',difficulty:'basic',notes:6,count:20,pattern:'steps',rhythm:1,tempo:60,flow:'guided',dual:'alternate',hints:true,metronome:true}});
+  const defaults = () => ({version:3,ear:typeof EarCore==='undefined'?{}:EarCore.defaults(),foundation:typeof FoundationCore==='undefined'?{}:FoundationCore.defaults(),learning:typeof LearningCore==='undefined'?{}:LearningCore.defaults(),rhythm:RC?RC.defaults():{},notes:{},confusions:{},reports:[],settings:{clef:'treble',input:'touch',course:'progressive',difficulty:'basic',notes:6,count:20,pattern:'steps',rhythm:1,tempo:60,flow:'guided',dual:'alternate',hints:true,metronome:true}});
   function validStoredExercise(ex){
     if(!ex||!Array.isArray(ex.events)||ex.events.length>60||!Number.isFinite(ex.totalBeats)||ex.totalBeats<=0||ex.totalBeats>64)return null;
     for(const e of ex.events){if(!e||!Number.isFinite(e.beat)||e.beat<0||![.5,1,2,4].includes(e.duration)||!Array.isArray(e.targets)||e.targets.length>2||!e.targets.every(t=>t&&['treble','bass'].includes(t.clef)&&t.note&&Number.isInteger(t.note.index)&&t.note.index>=14&&t.note.index<=48))return null;}
@@ -16,6 +16,7 @@ const StudyCore = (() => {
   function normalize(raw) {
     const out = defaults();
     if (!raw || typeof raw !== 'object') return out;
+    out.ear=typeof EarCore==='undefined'?{}:EarCore.normalize(raw.ear);
     out.foundation=typeof FoundationCore==='undefined'?{}:FoundationCore.normalize(raw.foundation);
     out.rhythm=RC?RC.normalize(raw.rhythm):{};
     out.learning=typeof LearningCore==='undefined'?{}:LearningCore.normalize(raw.learning);

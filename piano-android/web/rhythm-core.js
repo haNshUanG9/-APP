@@ -101,7 +101,8 @@ const RhythmCore = (() => {
     return bankPatterns(meter,unit)[0]?.values||Array.from({length:beats},()=>1);
   }
   function coursePool(s){
-    const unit=s.mode==='pulse'?0:s.mode==='subdivision'?4:Math.min(6,s.lessonUnit),catalog=courseCatalog(s),focus=catalog[unit]?.patterns||[],index=Math.min(s.lessonPattern||0,focus.length-1),first=focus[index],old=catalog.slice(s.mode==='subdivision'?4:0,unit).flatMap(x=>x.patterns).concat(focus.slice(0,index)),previous=old[old.length-1]||first,variant=previous;
+    const unit=s.mode==='pulse'?0:s.mode==='subdivision'?4:Math.min(6,s.lessonUnit),catalog=courseCatalog(s),focus=catalog[unit]?.patterns||[],index=Math.min(s.lessonPattern||0,focus.length-1),first=focus[index],old=catalog.slice(s.mode==='subdivision'?4:0,unit).flatMap(x=>x.patterns).concat(focus.slice(0,index)),previous=old[old.length-1]||first;
+    const shifted=first?.values.slice(1).concat(first.values[0]),variant=shifted&&JSON.stringify(shifted)!==JSON.stringify(first.values)?{id:'transfer-'+patternSignature(shifted),values:shifted}:previous;
     return {first,old:previous,variant,focus,oldPool:old,catalog,unit};
   }
   const courseProgressKey=s=>[s.mode,s.meter,s.input||'touch'].join('|');
@@ -143,7 +144,7 @@ const RhythmCore = (() => {
     events.sort((a,b)=>a.beat-b.beat||a.lane.localeCompare(b.lane));
     return {settings:s,events,bars,totalBeats:beats*s.bars};
   }
-  const isHold=s=>['hold','dual'].includes(s.mode);
+  const isHold=s=>['hold','dual','echo'].includes(s.mode);
   function evaluate(ex,inputs,complete=true,visitedMs=Infinity) {
     const s=ex.settings,beatMs=60000/s.tempo,used=new Set(),answers=[];
     const events=ex.events.filter(e=>!e.rest && (complete||e.beat*beatMs<visitedMs));
@@ -160,7 +161,7 @@ const RhythmCore = (() => {
     const a=answers.filter(x=>!x.interrupted),matched=a.filter(x=>x.hit),deltas=matched.map(x=>x.delta),center=median(deltas),holds=a.filter(x=>x.durationDelta!==null);
     let drift=null;if(matched.length>=6){const meanX=matched.reduce((n,x)=>n+x.beat,0)/matched.length,meanY=deltas.reduce((n,x)=>n+x,0)/deltas.length;const den=matched.reduce((n,x)=>n+(x.beat-meanX)**2,0);if(den>0)drift=matched.reduce((n,x)=>n+(x.beat-meanX)*(x.delta-meanY),0)/den;}
     const restExtras=extras.filter(p=>ex.events.some(e=>e.rest&&e.lane===p.lane&&p.down-s.offset>=(e.beat+.15)*beatMs&&p.down-s.offset<(e.beat+e.duration-.1)*beatMs)).length;
-    return {answers,extras,metrics:{seen:a.length,hit:matched.length,missed:a.filter(x=>!x.hit).length,interrupted:answers.length-a.length,extras:extras.length,restExtras,medianOffset:center,medianAbs:median(deltas.map(Math.abs)),jitter:center===null?null:median(deltas.map(x=>Math.abs(x-center))),drift,holds:holds.length,holdCorrect:holds.filter(x=>x.hold).length,short:holds.filter(x=>x.durationDelta < -x.tolerance).length,long:holds.filter(x=>x.durationDelta>x.tolerance).length,durationAbs:median(holds.map(x=>Math.abs(x.durationDelta)))}};
+    return {answers,extras,metrics:{seen:a.length,hit:matched.length,onTime:matched.filter(x=>Math.abs(x.delta)<=beatMs*.18).length,missed:a.filter(x=>!x.hit).length,interrupted:answers.length-a.length,extras:extras.length,restExtras,medianOffset:center,medianAbs:median(deltas.map(Math.abs)),jitter:center===null?null:median(deltas.map(x=>Math.abs(x-center))),drift,holds:holds.length,holdCorrect:holds.filter(x=>x.hold).length,short:holds.filter(x=>x.durationDelta < -x.tolerance).length,long:holds.filter(x=>x.durationDelta>x.tolerance).length,durationAbs:median(holds.map(x=>Math.abs(x.durationDelta)))}};
   }
   function observe(d,report) {
     if(report.paused||report.hint||!report.result.metrics.seen)return;

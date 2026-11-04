@@ -1,0 +1,123 @@
+/* Shared tablet touch and reading tokens; score glyphs retain their own geometry. */
+:root{--muted:#53647a;--task-muted:#536780;--task-touch:48px}
+body button:not([data-midi]):not([data-song-key]):not([data-note]):not([data-ear-key]){min-height:var(--task-touch);min-width:var(--task-touch)}
+body summary{min-height:48px;line-height:1.6;padding-top:12px;padding-bottom:12px}
+body .page-head>div>p,body .topic-row p,body .daily-steps p,body .home-lesson>p,body .song-item small,body .guide-label small,body .guide-row small,body .song-report-limit{color:#53647a}
+body.tablet-study #lessonCounter,body.tablet-study #lessonFeedback,body.tablet-song #songPosition,body.tablet-song #guideSpeed small,body.tablet-song .guide-key-legend{color:#52647b!important}
+body.tablet-study .memory-host button{min-height:48px;min-width:48px}
+body .daily-steps li{min-height:64px}
+.preparation-target{display:block;margin:8px 0;color:#425b76;font-size:14px}
+body .topic-options>h3{font-size:18px;margin-bottom:16px}
+body #reading .reading-description{padding:24px;display:flex;flex-direction:column;gap:18px;justify-content:center;background:var(--paper);border:1px solid var(--line)}
+body #reading .reading-description h3{font-size:26px;margin:0}
+.preparation-score{min-height:150px;width:100%;display:flex;align-items:center}
+.preparation-score svg{width:100%;height:auto;max-height:300px}
+body #reading .reading-form{align-content:start;gap:20px;padding:24px}
+.preparation-more{grid-column:1/-1;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.preparation-more-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:8px 0 20px}
+body #reading .phrase-phase{padding:16px 0 0;margin:0;border-top:1px solid var(--line);background:transparent}
+body #reading .phrase-phase h3{font-size:17px}
+body #reading .phrase-phase p{font-size:14px}
+body .song-score-observation{font:600 20px/1.5 'Microsoft YaHei',sans-serif;color:#415b78;max-width:230px}
+body.tablet-song #songReturnPractice{background:#edf2f8;border:1px solid #bccada;color:#344c67;padding:8px 12px;white-space:nowrap}
+.rhythm-timing-summary{padding:14px 18px;background:#edf2f8;border-left:3px solid #7089a9;margin:14px 0;font-size:16px;color:#243b56}
+body.tablet-rhythm .app-header{display:none}
+body.tablet-rhythm .app-frame{grid-template-rows:minmax(0,1fr)}
+body.tablet-rhythm .main{height:100%;padding-top:0}
+body.tablet-rhythm .rhythm-workspace{height:100%;border:0;border-radius:0}
+body.tablet-rhythm .rh-session-head{min-height:64px}
+body.tablet-rhythm .rhythm-workspace .eyebrow{display:none}
+body .rhythm-mode-list button[aria-pressed="true"]{border-color:#7892b2;background:#e8eef7}
+#skillEvidence{padding:20px 0;margin:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#skillEvidence>h3{font-size:20px;margin-bottom:16px}
+#skillEvidence>p{font-size:13px;margin-top:14px;color:#53647a}
+.evidence-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.evidence-grid>div{display:flex;flex-direction:column;gap:8px;padding-right:16px}
+.evidence-grid strong{font-size:18px}.evidence-grid span{font-size:15px}.evidence-grid small{font-size:13px;color:#53647a}
+body #earPage{padding:24px var(--workspace-edge);overflow:auto;background:var(--paper)}
+.ear-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:24px 0}
+.ear-levels button{display:flex;flex-direction:column;gap:14px;align-items:start;text-align:left;padding:24px;border:1px solid var(--line);background:var(--paper);min-height:190px}
+.ear-levels strong{font-size:22px}.ear-levels span{font-size:15px;font-weight:400;line-height:1.7;color:#53647a}
+.ear-map-note{max-width:900px;font-size:14px;color:#53647a}
+.ear-session{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100%;min-height:560px}
+.ear-top{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:4px 0 20px;border-bottom:1px solid var(--line)}
+.ear-top>div{display:flex;gap:16px;align-items:center}.ear-top h2{font-size:22px}.ear-top span{font-size:14px;color:#53647a}
+.ear-main{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:24px 0;max-width:850px;width:100%;margin:auto}
+.ear-main>small{font-size:14px;color:#53647a}.ear-main>h3{text-align:center;font-size:23px;line-height:1.6}
+.ear-listen{width:150px;min-height:150px!important;border-radius:50%;background:#e8eef6;color:#344d6d;font-size:21px}
+#earMessage{min-height:28px;font-size:16px;text-align:center}.ear-answers{display:flex;justify-content:center;flex-wrap:wrap;gap:16px;width:100%}
+.ear-answers button{min-width:140px!important;min-height:64px!important;font-size:20px;font-weight:500}
+.ear-reference{font-size:14px;color:#53647a}.ear-keys{display:flex;width:100%;height:150px;gap:2px;max-width:600px}
+.ear-keys button{flex:1;min-width:0;border-radius:0 0 5px 5px;border:1px solid #aebed0;background:white;color:#243b56;display:flex;align-items:end;justify-content:center;padding:20px;touch-action:none}
+.ear-keys button:active{background:#dce6f2}.ear-bottom{display:flex;align-items:center;gap:20px;border-top:1px solid var(--line);padding:16px 0}.ear-bottom p{font-size:14px;color:#53647a}
+.ear-result{max-width:850px;margin:80px auto;display:flex;flex-direction:column;gap:24px}.ear-result>div{display:flex;gap:16px}
+@media(max-width:1000px){.ear-levels{grid-template-columns:repeat(2,minmax(0,1fr))}.ear-top>div{flex-wrap:wrap;gap:8px}.ear-top h2{font-size:20px}}
+@media(max-width:839px){body.song-has-origin #songSeek{grid-column:1/4}body.tablet-song #songReturnPractice{grid-column:4;grid-row:2;padding:4px;font-size:13px}body #reading .reading-settings{display:flex;flex-direction:column;overflow:auto}body #reading .reading-description,body #reading .reading-form{flex:none}.evidence-grid{gap:12px}.ear-top{align-items:start}.ear-session{min-height:620px}.ear-main{gap:18px}.ear-listen{width:120px;min-height:120px!important}}
+@media(max-width:650px){.ear-levels{grid-template-columns:1fr}.ear-levels button{min-height:150px}.ear-main>h3{font-size:20px}.ear-answers button{min-width:120px!important;font-size:18px}.ear-bottom{align-items:start}.ear-top h2{font-size:19px}.evidence-grid{grid-template-columns:1fr}.preparation-more-fields{grid-template-columns:1fr}.ear-top>div:first-child{flex-direction:column;align-items:start}}
+@media(max-height:640px){.ear-session{min-height:500px}.ear-main{gap:10px;padding:12px 0}.ear-listen{width:90px;min-height:90px!important;font-size:17px}.ear-main>h3{font-size:19px}.ear-keys{height:100px}}
+
+body #reading .reading-settings{grid-template-columns:minmax(0,1.4fr) minmax(360px,1fr)}
+body #reading .reading-description{justify-content:start;gap:20px}
+body #reading .preparation-score{flex:1;min-height:190px}
+body #reading .reading-form #phraseCourseInfo{grid-column:1/-1}
+body #reading .phrase-phase{padding:16px 0;margin:0;border:0;background:transparent}
+body #topics .topic-options>h3{display:block;margin:0;font-size:17px}
+@media(min-width:1100px){
+ body #topics .topic-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(145px,1fr));column-gap:24px}
+ body #topics .topic-row{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px 12px;padding:14px 4px;min-height:0;align-content:start}
+ body #topics .topic-number{display:none}
+ body #topics .topic-row .course-no{align-self:start;padding-top:6px}
+ body #topics .topic-row>button{grid-column:2;justify-self:start;min-height:48px;padding:8px 0}
+ body #topics .topic-row h3{font-size:19px}
+ body #topics .topic-row p{font-size:13px;line-height:1.5}
+ body #topics .preparation-target{margin:4px 0;font-size:13px}
+}
+body.tablet-rhythm .app-header{display:none!important}
+body.tablet-rhythm{--chrome:0px}
+body.tablet-rhythm .main{height:100%;padding:0}
+
+#scoreRangeTools{position:absolute;left:var(--workspace-edge);right:var(--workspace-edge);top:8px;z-index:8;display:flex;align-items:center;justify-content:space-between;gap:20px;background:var(--paper);border:1px solid #8b9fb8;padding:8px 16px;border-radius:10px;box-shadow:0 6px 24px #26334a12}
+#scoreRangeTools p{font-size:16px;font-weight:600;color:#344d6b}
+.song-system-page [data-range-pick]:focus{outline:0;stroke:#526d8f;stroke-width:2}
+@media(prefers-reduced-motion:no-preference){.ear-main,.ear-result,.reading-settings{animation:task-enter .16s ease-out}@keyframes task-enter{from{opacity:.4;transform:translateY(5px)}to{opacity:1;transform:none}}}
+
+@media(min-width:1100px){body #topics .topic-row[data-course]{grid-column:auto;border-color:var(--line)}}
+
+body #reading .reading-description{justify-content:center;gap:16px}
+body #reading .preparation-score{flex:none;min-height:0;height:270px}
+body #reading .reading-description p{margin:0;font-size:15px}
+body #topics .topic-row{cursor:pointer;transition:background-color .12s}
+body #topics .topic-row:active,body #topics .topic-row:focus-within{background:#e8eef7}
+body #topics .topic-row>button{font-size:16px;font-weight:600}
+body.tablet-song #songLibraryOpen .song-title-text{font-size:16px;color:#243b56}
+body.tablet-song #songHandQuick,body.tablet-song #songRange,body.tablet-song #songKeysToggle{font-size:15px;color:#3d5676}
+body.tablet-song #guideSpeed b{font-size:22px}
+body.tablet-song .guide-key-legend{font-size:14px}
+body.tablet-ear .app-header{display:none!important}
+body.tablet-ear{--chrome:0px}
+body.tablet-ear #earPage{padding-top:12px}
+#earBack{font-size:26px;padding:0 12px;border:0;background:transparent}
+@media(max-height:640px){body #reading .preparation-score{height:160px}body #reading .reading-description{gap:10px;padding:18px}}
+
+body #today .plan-intro{padding:16px 20px}
+body #today .plan-intro>.eyebrow{display:none}
+body #today .daily-steps li{min-height:56px;padding-top:6px;padding-bottom:6px}
+body.tablet-song #songLibraryOpen .song-title-text{display:inline!important}
+@media(max-width:839px){
+ body #reading .reading-description{max-height:none;overflow:visible;gap:12px;padding:20px}
+ body #reading .reading-description>*{flex-shrink:0}
+ body #reading .preparation-score{height:180px}
+ body #reading #phrasePrepareNote,body #reading .reading-description>small{display:none}
+ body #reading .reading-description h3{font-size:22px}
+}
+@media(max-width:650px){body #reading .preparation-score{height:120px}body #reading .reading-description{padding:16px;gap:10px}body #reading .reading-form{padding:18px}}
+
+body.tablet-song #guideRangePick,body.tablet-song #guideGridPick{min-height:48px;height:auto;font-size:15px;padding:10px}
+body #today .home-quick>summary{min-height:48px;line-height:24px;padding:12px 0}
+body #reading .study-number input{min-width:48px}
+@media(min-width:840px) and (min-height:741px){body #today{grid-template-rows:auto minmax(0,1fr) 90px 48px}}
+@media(min-width:840px) and (max-height:740px){body #today{grid-template-rows:auto minmax(400px,auto) auto 48px}}
+
+body #earContinue,body .ear-result button.primary,body .ear-listen{background:#4d6484;color:#fff;border-color:#4d6484;font-size:16px}
+body .ear-listen{font-size:21px;font-weight:600}
+body .ear-listen:disabled{background:#e8eef6;color:#697c95;border-color:#d4deeb}

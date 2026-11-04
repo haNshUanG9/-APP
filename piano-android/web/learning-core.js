@@ -28,7 +28,8 @@ const LearningCore=(()=>{
     }
     for(const [k,p]of Object.entries(raw.phrases||{}).slice(0,8))if(/^(treble|bass)\|(touch|midi)$/.test(k)&&p){
       const valid=ex=>ex&&Array.isArray(ex.events)&&ex.events.length<=50&&ex.events.every(e=>Number.isFinite(e.beat)&&e.beat>=0&&[.5,1,2,4].includes(e.duration)&&Array.isArray(e.targets)&&e.targets.every(t=>t&&['treble','bass'].includes(t.clef)&&t.note&&Number.isInteger(t.note.index)&&t.note.index>=14&&t.note.index<=48))&&Number.isFinite(ex.totalBeats)&&ex.totalBeats>0&&ex.totalBeats<=64;
-      d.phrases[k]={unit:integer(p.unit,0,7),phase:integer(p.phase,0,3),exercise:valid(p.exercise)?clone(p.exercise):null,base:valid(p.base)?clone(p.base):null};
+      const renewed=integer(p.unit,0,7)>=6&&p.contentVersion!==2;
+      d.phrases[k]={unit:integer(p.unit,0,7),phase:renewed?0:integer(p.phase,0,3),exercise:!renewed&&valid(p.exercise)?clone(p.exercise):null,base:!renewed&&valid(p.base)?clone(p.base):null,contentVersion:2};
     }
     for(const [k,p]of Object.entries(raw.rhythm||{}).slice(0,200))if(k.length<140&&/^[a-z0-9|_./-]+$/i.test(k)&&p){
       const state={unit:integer(p.unit,0,6),phase:integer(p.phase,0,3),clean:integer(p.clean,0,100)};
@@ -114,9 +115,11 @@ const LearningCore=(()=>{
   const phraseSets={treble:[['G4','F4'],['F4','G4','A4'],['C4','D4','E4'],['E4','F4','G4'],['A4','B4','C5'],['B4','C5','D5'],['C4','D4','E4','F4','G4'],['G4','A4','B4','C5','D5']],bass:[['F3','E3'],['E3','F3','G3'],['C3','D3','E3'],['G2','A2','B2'],['G3','A3','B3'],['A3','B3','C4'],['C3','D3','E3','F3','G3'],['G2','A2','B2','C3','D3']]};
   function phraseInfo(d,clef,source){const c=clef==='bass'?'bass':'treble',key=c+'|'+input(source),p=d.phrases[key]||(d.phrases[key]={unit:0,phase:0,exercise:null,base:null}),notes=phraseSets[c][p.unit],unlocked=notes.every(n=>evidence(d,{clef:c,note:C.parse(n)},'keyboard',source)?.successes>=4);return {key,state:p,clef:c,notes,unlocked,labels:['认准这一句','同句无提示','同句跟拍','小变体检查']};}
   function phraseExercise(d,clef,source){
-    const i=phraseInfo(d,clef,source),p=i.state;if(p.exercise)return clone(p.exercise);
-    const ns=i.notes.map(C.parse),order=[0,1,0,Math.min(2,ns.length-1),1,0];
-    if(p.phase===3)order[2]=ns.length===2?1:2;
+    const i=phraseInfo(d,clef,source),p=i.state;
+    if(p.unit>=6&&p.contentVersion!==2){p.phase=0;p.exercise=null;p.base=null;}
+    p.contentVersion=2;if(p.exercise)return clone(p.exercise);
+    const ns=i.notes.map(C.parse),order=ns.length===5?[0,1,2,3,4,2]:ns.length===3?[0,1,2,1,0,2]:[0,1,0,1,1,0];
+    if(p.phase===3){if(ns.length===5)order.splice(0,6,0,2,1,3,2,4);else order[2]=ns.length===2?1:0;}
     const events=order.map((j,n)=>{const targets=[{clef:i.clef,note:ns[j]}];return {beat:n,duration:1,rest:false,targets,voices:[{targets:clone(targets),duration:1}]};});
     events.push({beat:6,duration:2,rest:true,targets:[],voices:[]});p.exercise={events,totalBeats:8,clefs:[i.clef]};if(p.phase===0)p.base=clone(p.exercise);return clone(p.exercise);
   }

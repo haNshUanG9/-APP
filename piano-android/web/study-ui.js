@@ -3,7 +3,7 @@
   'use strict';
   const C=PianoCore,S=StudyCore,LCore=LearningCore,H=window.PianoHost,$=id=>document.getElementById(id),G=H.glyphs,V=window.PianoStudio;
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const names={anchors:'参照音定位',contrast:'易混音对照',ledger:'加线音专项',reverse:'琴键到谱面',review:'到期复习',phrase:'短句读谱',rhythm:'节奏练习'};
+  const names={anchors:'参照音定位',contrast:'易混音对照',ledger:'加线音专项',reverse:'琴键到谱面',review:'到期复习',phrase:'短句读谱',rhythm:'节奏练习',ear:'听音训练'};
   let lesson=null,currentPage='today',raf=0,audio=null,scheduled=0,clickTimers=[],keyboardDown=new Map(),activeOscillators=new Set();
   const AUTO_ADVANCE_MS=1000,heldPointers=new Set();let advanceTimer=0,lastInput=0;
   function cancelAdvance(){clearTimeout(advanceTimer);advanceTimer=0;}
@@ -47,11 +47,11 @@
     }
   }
   function topics() {
-    const rows=[['anchors','参照音与周围位置一起练，逐步扩大线间距离。'],['contrast','成对比较相邻音、三度或八度；有错键记录时加入实际混淆。'],['ledger','按难度练上下加线，从靠近谱表的位置逐步扩展。'],['reverse','先看一个琴键，再在指定谱表上找同一个音。'],['rhythm','稳拍、数拍、时值、休止、听后模仿与双侧配合。']];
-    $('topics').innerHTML=`${V.heading('02','把难点，逐个练熟。','一次专注一种能力，再把它放回音乐里。','<button id="topicFree">自由练习 ↗</button>')}<div class="topic-list">${rows.map(([k,p],i)=>`<div class="topic-row" data-course="${k}"><span class="course-no">${String(i+1).padStart(2,'0')}</span><span class="topic-number">${V.icon(k)}</span><div><h3>${k==='rhythm'?'节奏与拍子':names[k]}</h3><p>${p}</p></div><button data-topic="${k}" class="${i===0?'primary':''}">开始练习${V.icon('arrow')}</button></div>`).join('')}</div><div class="topic-options"><label>练习安排<select id="topicCourse"><option value="progressive">循序课程 · 固定音组</option><option value="free">自由抽题 · 全音域</option></select></label><label>练习谱表<select id="topicClef"><option value="treble">高音谱表</option><option value="bass">低音谱表</option><option value="mixed">高低混合</option></select></label><label>音域难度<select id="topicDifficulty"><option value="beginner">入门 · 近邻与近加线</option><option value="basic">基础 · 扩展位置</option><option value="extended">拓展 · 宽音域与八度</option></select></label><label>每轮题量<select id="topicCount"><option value="10">10题</option><option value="20">20题</option><option value="40">40题</option><option value="60">60题</option></select></label><label>节奏难度<select id="topicRhythm"><option value="1">基础 四分与二分</option><option value="2">进阶 加入八分</option></select></label><label>节奏速度<select id="topicTempo">${[40,50,60,70,80].map(x=>`<option value="${x}">${x} BPM</option>`).join('')}</select></label><p>音高专项按所选题量练习；节奏课程单独选择拍号、小节和速度。用过参照提示的音不计入无提示准确率，也不会升级复习间隔。</p></div>`;
+    const rows=[['anchors','参照音与周围位置一起练，逐步扩大线间距离。'],['contrast','成对比较相邻音、三度或八度；有错键记录时加入实际混淆。'],['ledger','按难度练上下加线，从靠近谱表的位置逐步扩展。'],['reverse','先看一个琴键，再在指定谱表上找同一个音。'],['rhythm','稳拍、数拍、时值、休止、听后模仿与双侧配合。'],['ear','从相同与方向，到轮廓、短句比较和听后复现。']];
+    $('topics').innerHTML=`${V.heading('02','把难点，逐个练熟。','一次专注一种能力，再把它放回音乐里。','<button id="topicFree">自由练习 ↗</button>')}<div class="topic-list">${rows.map(([k,p],i)=>`<div class="topic-row" data-course="${k}"><span class="course-no">${String(i+1).padStart(2,'0')}</span><span class="topic-number">${V.icon(k==='ear'?'rhythm':k)}</span><div><h3>${k==='rhythm'?'节奏与拍子':names[k]}</h3><p>${p}</p></div><button data-topic="${k}" class="${i===0?'primary':''}">开始练习${V.icon('arrow')}</button></div>`).join('')}</div><div class="topic-options"><label>练习安排<select id="topicCourse"><option value="progressive">循序课程 · 固定音组</option><option value="free">自由抽题 · 全音域</option></select></label><label>练习谱表<select id="topicClef"><option value="treble">高音谱表</option><option value="bass">低音谱表</option><option value="mixed">高低混合</option></select></label><label>音域难度<select id="topicDifficulty"><option value="beginner">入门 · 近邻与近加线</option><option value="basic">基础 · 扩展位置</option><option value="extended">拓展 · 宽音域与八度</option></select></label><label>每轮题量<select id="topicCount"><option value="10">10题</option><option value="20">20题</option><option value="40">40题</option><option value="60">60题</option></select></label><label>节奏难度<select id="topicRhythm"><option value="1">基础 四分与二分</option><option value="2">进阶 加入八分</option></select></label><label>节奏速度<select id="topicTempo">${[40,50,60,70,80].map(x=>`<option value="${x}">${x} BPM</option>`).join('')}</select></label><p>音高专项按所选题量练习；节奏课程单独选择拍号、小节和速度。用过参照提示的音不计入无提示准确率，也不会升级复习间隔。</p></div>`;
     $('topicClef').value=data().settings.clef==='dual'?'treble':data().settings.clef;$('topicCourse').value=data().settings.course||'progressive';
     $('topicDifficulty').value=data().settings.difficulty;$('topicCount').value=data().settings.count;$('topicRhythm').value=data().settings.rhythm;$('topicTempo').value=data().settings.tempo;$('topicRhythm').parentElement.hidden=true;$('topicTempo').parentElement.hidden=true;
-    $('topics').querySelectorAll('[data-topic]').forEach(b=>b.onclick=()=>b.dataset.topic==='rhythm'?window.PianoRhythm.open():launch(b.dataset.topic,{clef:$('topicClef').value,course:$('topicCourse').value,difficulty:$('topicDifficulty').value,count:Number($('topicCount').value),tempo:Number($('topicTempo').value),rhythm:Number($('topicRhythm').value),metronome:true}));$('topicFree').onclick=classic;
+    $('topics').querySelectorAll('[data-topic]').forEach(b=>b.onclick=()=>b.dataset.topic==='rhythm'?window.PianoRhythm.open():b.dataset.topic==='ear'?window.PianoEar.open():launch(b.dataset.topic,{clef:$('topicClef').value,course:$('topicCourse').value,difficulty:$('topicDifficulty').value,count:Number($('topicCount').value),tempo:Number($('topicTempo').value),rhythm:Number($('topicRhythm').value),metronome:true}));$('topicFree').onclick=classic;
     $('topics').insertAdjacentHTML('beforeend','<div class="section-heading"><h3>你的学习路线</h3><span>反复巩固，再向前一步</span></div>');
     const map=document.createElement('div');map.id='unitOverview';map.className='unit-overview';$('topics').appendChild(map);
     if(window.PianoFoundation){const entry=document.createElement('section');entry.className='foundation-entry';entry.innerHTML='<div><span class="eyebrow">18 节小课 · 36 条乐句</span><h3>循序课程</h3><p>需要按顺序学习时，从当前课继续。</p></div><button class="primary" id="topicFoundation">打开课程地图</button>';$('topics').querySelector('.page-head').after(entry);$('topicFoundation').onclick=()=>window.PianoFoundation.open();}
@@ -62,7 +62,7 @@
   function reading() {
     const s=data().settings;
     $('reading').innerHTML=`${V.heading('03','让音符，连成音乐。','先读懂一句，再把它练得自然流畅。','<button id="readingFree">自由练习与倒计时 ↗</button>')}
-    <div class="reading-settings"><div class="reading-description"><span class="eyebrow">READ · REPEAT · REMEMBER</span><h3>慢慢认准，<br>再跟着拍子走。</h3>${V.artwork()}<p>学习时可以停下来纠错；连续练习时，跟着预备拍进入，结束后再复盘错音。</p><p>同一句反复练熟后，再通过小变体检查记忆。测评使用新短句，并关闭音高提示。</p><p class="muted">自然音 · 4/4拍 · 中央C = C4<br>琴键范围在本轮内保持固定。</p></div><div class="reading-form">
+    <div class="reading-settings"><div class="reading-description"><small>这一轮，练会一句</small><h3 id="phrasePrepareGoal">先认准，再连起来</h3><div id="phrasePreparePreview" class="preparation-score"></div><p id="phrasePrepareSummary"></p><p class="muted" id="phrasePrepareNote">预览就是接下来要练的乐句；可停下来纠错，帮助逐步收起。</p></div><div class="reading-form">
     <label>练习安排<select id="studyCourse"><option value="progressive">循序课程 · 同句巩固</option><option value="free">自由短句</option></select></label><label>谱表<select id="studyClef"><option value="treble">高音</option><option value="bass">低音</option><option value="mixed">高低轮换</option><option value="dual">双谱表</option></select></label>
     <label>每段音符数<div class="study-number"><button id="studyMinus" aria-label="减少短句音数">−</button><input id="studyNotes" type="number" min="1" max="15" step="1" inputmode="numeric"><button id="studyPlus" aria-label="增加短句音数">＋</button></div></label>
     <label>音域<select id="studyDifficulty"><option value="beginner">入门 · 谱表内</option><option value="basic">基础 · 扩展音域</option><option value="extended">拓展 · 加线音域</option></select></label><label>音型<select id="studyPattern"><option value="steps">级进 上行与下行</option><option value="repeat">重复音与相邻音</option><option value="thirds">三度跳进</option><option value="mixed">混合音型</option></select></label>
@@ -72,11 +72,16 @@
     <label id="tempoChoice">速度<select id="studyTempo">${[40,50,60,70,80].map(x=>`<option value="${x}">${x} BPM 每分钟${x}拍</option>`).join('')}</select></label>
     <label class="study-check"><input type="checkbox" id="studyMetro">开启节拍器</label><button class="primary" id="studyLaunch">开始短句</button><p id="studySettingsError" role="alert" class="bad" hidden></p></div></div>`;
     const map={Course:'course',Clef:'clef',Difficulty:'difficulty',Notes:'notes',Pattern:'pattern',Rhythm:'rhythm',Dual:'dual',Flow:'flow',Tempo:'tempo'};Object.keys(map).forEach(k=>$('study'+k).value=s[map[k]]);$('studyMetro').checked=s.metronome;
+    let previewExercise=null;
     function controls(){const progressive=$('studyCourse').value==='progressive';for(const id of ['studyNotes','studyPattern','studyRhythm','studyFlow','studyDifficulty'])$(id).disabled=progressive;$('studyMinus').disabled=progressive;$('studyPlus').disabled=progressive;
       const i=LCore.phraseInfo(learning(),$('studyClef').value,source());let box=$('phraseCourseInfo');if(!box){box=document.createElement('div');box.id='phraseCourseInfo';box.className='phrase-phase';$('reading').querySelector('.reading-description').appendChild(box);}box.hidden=!progressive;box.innerHTML=`<h3>单元 ${i.state.unit+1}/8 · ${esc(i.notes.join(' / '))}</h3><p>阶段：${i.labels[i.state.phase]}。${i.unlocked?'目标音已练熟，可以开始短句。':'先在音高专项中把这些音各独立认对至少4次，再开始短句。'} 循序短句使用单谱表、固定6音和较慢跟拍；双谱表可在自由短句中练习。</p>`;
+      const previewSettings={...s,clef:$('studyClef').value,notes:Math.max(1,Math.min(15,Number($('studyNotes').value)||6)),pattern:$('studyPattern').value,rhythm:Number($('studyRhythm').value),dual:$('studyDual').value};
+      const assessment=!progressive&&$('studyFlow').value==='assessment';
+      previewExercise=assessment?null:progressive?LCore.phraseExercise(learning(),$('studyClef').value,source()):S.phrase(previewSettings,data());
+      $('phrasePreparePreview').innerHTML=assessment?'<p>开始后生成新乐句</p>':window.PianoPreparation?.score(previewExercise)||'';$('phrasePrepareNote').textContent=assessment?'测评不预览音高；开始后独立完成，结果会单独记录。':'预览就是接下来要练的乐句；可停下来纠错，帮助逐步收起。';$('phrasePrepareGoal').textContent=progressive?i.labels[i.state.phase]:assessment?'独立完成一条新乐句':'认准这句，再跟拍';$('phrasePrepareSummary').textContent=(progressive?i.notes.join(' / '):(assessment?previewSettings.notes:previewExercise.events.reduce((n,e)=>n+e.targets.length,0))+' 个音')+' · '+(progressive?'当前单元，同句反复':'按所选音型与节奏生成')+' · '+(progressive?'50 BPM':$('studyTempo').value+' BPM');
       $('dualChoice').hidden=$('studyClef').value!=='dual';$('tempoChoice').hidden=$('studyFlow').value==='guided';$('studyMetro').parentElement.hidden=$('studyFlow').value==='guided';}
-    controls();['studyCourse','studyClef','studyFlow'].forEach(id=>$(id).onchange=controls);
-    ['studyMinus','studyPlus'].forEach(id=>$(id).onclick=()=>{$('studyNotes').value=Math.max(1,Math.min(15,(Number($('studyNotes').value)||1)+(id==='studyPlus'?1:-1)));});
+    controls();Object.keys(map).forEach(k=>$('study'+k).onchange=controls);
+    ['studyMinus','studyPlus'].forEach(id=>$(id).onclick=()=>{$('studyNotes').value=Math.max(1,Math.min(15,(Number($('studyNotes').value)||1)+(id==='studyPlus'?1:-1)));controls();});
     $('studyLaunch').onclick=()=>{
       const notes=Number($('studyNotes').value);let error='';
       if(!Number.isInteger(notes)||notes<1||notes>15)error='音符数须为1～15的整数。';
@@ -84,10 +89,11 @@
       if($('studyClef').value==='dual'&&$('studyDual').value==='sustain'&&notes<3)error='低音长音配合至少需要3个音。';
       $('studySettingsError').textContent=error;$('studySettingsError').hidden=!error;if(error)return;
       const settings={course:$('studyCourse').value,clef:$('studyClef').value,difficulty:$('studyDifficulty').value,notes,pattern:$('studyPattern').value,rhythm:Number($('studyRhythm').value),dual:$('studyDual').value,flow:$('studyFlow').value,tempo:Number($('studyTempo').value),metronome:$('studyMetro').checked};
-      data().settings={...s,...settings};H.save();launch('phrase',settings);
+      data().settings={...s,...settings};H.save();launch('phrase',{...settings,exercise:previewExercise});
     };$('readingFree').onclick=classic;
   }
   function confirmLaunch(fn) {
+    if(window.PianoEar?.isActive()){window.PianoEar.stopForStudy(()=>confirmLaunch(fn));return;}
     if(window.PianoSongs?.beforeOtherTraining?.(fn))return;
     if(window.PianoFoundation?.isActive()){window.PianoFoundation.stopForStudy(()=>confirmLaunch(fn));return;}
     if(window.PianoRhythm?.isActive()){window.PianoRhythm.stopForStudy(()=>confirmLaunch(fn));return;}
