@@ -139,7 +139,7 @@ public final class MainActivity extends Activity {
                 if(attempt<9){probeStartup(generation,attempt+1);return;}
                 if(startupDialogShown)return;startupDialogShown=true;
                 PackageInfo engine=WebView.getCurrentWebViewPackage();
-                final String diagnostics="版本 1.5.9 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
+                final String diagnostics="版本 1.6.0 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
                 new AlertDialog.Builder(MainActivity.this).setTitle("应用启动失败").setMessage(diagnostics+"\n\n可复制诊断信息用于排查。")
                     .setNeutralButton("复制诊断",(d,w)->{ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);if(clipboard!=null)clipboard.setPrimaryClip(ClipData.newPlainText("识谱应用启动诊断",diagnostics));toast("诊断信息已复制。");})
                     .setPositiveButton("关闭",null).show();
@@ -176,7 +176,7 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public void midiDisconnect(){runOnUiThread(()->{if(midi!=null)midi.disconnect();});}
 
         @JavascriptInterface public String loadData(){return preferences.getString("data","");}
-        @JavascriptInterface public void saveData(String json){if(json==null||json.length()>MAX_BYTES)return;try{new JSONObject(json);preferences.edit().putString("data",json).apply();}catch(Exception ignored){}}
+        @JavascriptInterface public boolean saveData(String json){if(json==null||json.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)return false;try{new JSONObject(json);return preferences.edit().putString("data",json).commit();}catch(Exception ignored){return false;}}
         @JavascriptInterface public void exportData(String filename,String json){
             if(json==null||json.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES){toast("数据文件过大，无法导出。");return;}
             runOnUiThread(()->{if(pendingExport!=null){toast("已有导出正在进行。");return;}pendingExport=json;String title=filename==null?"识谱练习数据.json":filename.replaceAll("[/\\\\]","_");Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json").putExtra(Intent.EXTRA_TITLE,title);try{startActivityForResult(intent,EXPORT);}catch(Exception e){pendingExport=null;nativeError("此设备没有可用的文件保存器。");}});

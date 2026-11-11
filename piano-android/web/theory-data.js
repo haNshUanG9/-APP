@@ -1,0 +1,29 @@
+/* Validated theory persistence in the existing main backup. No extra storage origin. */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.TheoryData=api;})(typeof window==='object'?window:globalThis,function(){
+ 'use strict';
+ const forbidden=new Set(['__proto__','prototype','constructor']);
+ const copy=x=>JSON.parse(JSON.stringify(x));
+ function clean(x,depth=0){if(depth>10)return null;if(x===null||typeof x==='boolean')return x;if(typeof x==='number')return Number.isFinite(x)?x:null;if(typeof x==='string')return x.slice(0,3000);if(Array.isArray(x))return x.slice(0,256).map(v=>clean(v,depth+1));if(x&&typeof x==='object'){const out={};for(const k of Object.keys(x).slice(0,256))if(!forbidden.has(k))out[k.slice(0,1024)]=clean(x[k],depth+1);return out;}return null;}
+ const concepts=new Set(['I01','I02','I03','I04','I05','I06','C01','C02','C03','C04','C05','C06','C07','T01','T02','T03','T04','T05']);
+ const dimensions=new Set(['name','relation','construction','hearing','arrangement','voice']);
+ const emptyLearner=()=>({version:1,events:[],exposures:{},seen:'0'.repeat(2048),aidOverflowUntil:0,reviews:{},task:null,session:null});
+ function bitIndexes(signature){let a=2166136261,b=5381;for(let i=0;i<signature.length;i++){a=Math.imul(a^signature.charCodeAt(i),16777619);b=Math.imul(b,33)^signature.charCodeAt(i);}return [a>>>0,b>>>0].map(n=>n%8192);}
+ function addSeen(hex,signature){const chars=hex.split('');for(const bit of bitIndexes(signature)){const i=Math.floor(bit/4);chars[i]=(parseInt(chars[i],16)|(1<<(bit%4))).toString(16);}return chars.join('');}
+ function seen(data,signature){if(Object.prototype.hasOwnProperty.call(data.exposures||{},signature))return true;return bitIndexes(signature).every(bit=>(parseInt((data.seen||'')[Math.floor(bit/4)]||'0',16)&(1<<(bit%4)))!==0);}
+ function learner(raw){const d=emptyLearner();if(raw?.version!==1)return d;d.seen=typeof raw.seen==='string'&&/^[a-f0-9]{2048}$/.test(raw.seen)?raw.seen:d.seen;d.aidOverflowUntil=Number.isFinite(raw.aidOverflowUntil)?Math.max(0,raw.aidOverflowUntil):0;
+  const entries=[];for(const [sig,e]of Object.entries(raw.exposures||{})){if(sig.length>1024||forbidden.has(sig)||!e||!Number.isFinite(e.firstAt))continue;d.seen=addSeen(d.seen,sig);entries.push([sig,{firstAt:Math.max(0,e.firstAt),lastAidAt:Number.isFinite(e.lastAidAt)?Math.max(0,e.lastAidAt):0,reasons:[...new Set((Array.isArray(e.reasons)?e.reasons:[]).filter(r=>['presented','lookup','feedback','answer','hint'].includes(r)))]}]);}
+  for(const [sig,e]of entries.slice(0,-512))if(e.lastAidAt)d.aidOverflowUntil=Math.max(d.aidOverflowUntil,e.lastAidAt+600000);
+  for(const [sig,e]of entries.slice(-512))d.exposures[sig]=e;
+  d.events=(Array.isArray(raw.events)?raw.events:[]).filter(e=>e&&typeof e.type==='string'&&Number.isFinite(e.at)&&e.at>=0).slice(-500).map(e=>clean(e));
+  for(const [key,r]of Object.entries(raw.reviews||{})){const [id,dim]=key.split(':');if(!concepts.has(id)||!dimensions.has(dim)||key!==id+':'+dim||!r||!Number.isFinite(r.lastAt)||r.lastAt<0||!Number.isFinite(r.dueAt)||r.dueAt<0)continue;d.reviews[key]={conceptId:id,dimension:dim,lastAt:r.lastAt,dueAt:r.dueAt,lastCorrect:r.lastCorrect===true,independent:Math.max(0,Math.min(1000000,Math.floor(Number(r.independent)||0))),assisted:Math.max(0,Math.min(1000000,Math.floor(Number(r.assisted)||0))),incorrect:Math.max(0,Math.min(1000000,Math.floor(Number(r.incorrect)||0))),postponed:r.postponed===true,lastEvent:r.lastEvent?clean(r.lastEvent):null};}
+  for(const key of ['navigation','returnTask','task','session'])if(raw[key]&&typeof raw[key]==='object')d[key]=clean(raw[key]);
+  if(d.session){const session=d.session;if(!concepts.has(session.conceptId)||!dimensions.has(session.dimension)||!['question','support'].includes(session.phase))d.session=null;else if(session.phase==='question'){let curriculum=null;try{curriculum=typeof module==='object'&&module.exports?require('./theory-curriculum.js'):globalThis.Curriculum;}catch(e){}const q=session.question;const generated=q&&curriculum?.pool(session.conceptId,session.dimension,{quality:q.typeId==='minor'?'minor':'major',pattern:q.pattern,presentation:q.presentation}).find(x=>x.id===q.id);if(!generated)d.session=null;else{session.question=copy(generated);session.playing=false;session.heard=false;session.result=null;session.submitted=false;session.response=session.response&&typeof session.response==='object'?clean(session.response):{notes:[],events:[]};}}else{session.playing=false;session.heard=false;}}
+  return d;
+ }
+ function chord(raw){const d={version:1,records:{},chain:[]};if(raw?.version!==1)return d;const value=clean(raw);d.records=value.records&&typeof value.records==='object'&&!Array.isArray(value.records)?value.records:{};d.chain=(Array.isArray(value.chain)?value.chain:[]).filter(e=>e&&Array.isArray(e.notes)&&e.notes.length&&e.notes.length<=16&&e.notes.every(n=>Number.isInteger(n)&&n>=21&&n<=108)).slice(-64);return d;}
+ function returnContext(raw){if(!raw||raw.version!==1||typeof raw.songId!=='string'||raw.songId.length>200||!raw.settings||!Number.isFinite(raw.beat))return null;const d=clean(raw);d.version=1;d.beat=Math.max(0,d.beat);return d;}
+ const defaults=()=>({version:1,learner:emptyLearner(),chord:chord(null),returnContext:null});
+ function normalize(raw){return {version:1,learner:learner(raw?.learner),chord:chord(raw?.chord),returnContext:returnContext(raw?.returnContext)};}
+ function adapter(host,part){const api={getItem(){return JSON.stringify(host.getDB().theory[part]);},setItem(key,json){const db=host.getDB(),old=db.theory;const candidate=normalize({...old,[part]:JSON.parse(json)});db.theory=candidate;if(host.save()===false){host.getDB().theory=old;throw Error('保存失败');}},removeItem(){api.setItem('',JSON.stringify(defaults()[part]));}};return api;}
+ return {defaults,normalize,learner,chord,returnContext,seen,addSeen,clean,copy,adapter};
+});

@@ -37,6 +37,7 @@
   root.querySelectorAll('[data-guide-hint]').forEach(b=>b.onclick=()=>{prefs.hint=b.dataset.guideHint;save();lastFrame='';panel();update(liveBeat);api.notation();});
   bind('guideFingers',()=>{prefs.fingers=$('guideFingers').checked;save();lastFrame='';panel();update(liveBeat);api.notation();},'onchange');
   bind('guideInput',()=>{close();window.PianoInput?.open();});
+  if(!$('guideTheory')&&$('guideLibrary')){const b=document.createElement('button');b.id='guideTheory';b.className='guide-link';b.textContent='这里为什么 / 这里忘了';b.hidden=api.get().active&&api.get().settings.mode==='exam';$('guideLibrary').before(b);b.onclick=()=>{close();window.PianoTheory?.fromSong();};}
   bind('guideLibrary',()=>{close();api.settingsPanel('settings');});bind('guideEnd',()=>{close();$('songStop').click();});bind('guideNoteHint',()=>{close();$('songHint').click();});
   bind('guideTempoInput',()=>api.tempo(Number($('guideTempoInput').value)),'onchange');
   const adjust=delta=>{api.tempo(api.get().settings.tempo+delta);panel();};bind('guideSlower',()=>adjust(-5));bind('guideFaster',()=>adjust(5));
@@ -104,5 +105,5 @@
  }
  const back=window.PianoBack;window.PianoBack=()=>{if(open){close();return true;}if(focus){setFocus(false);return true;}return back?.();};
  document.addEventListener('keydown',e=>{if(!open)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();}else if(e.key==='Tab'){const a=[...$('songGuidePanel').querySelectorAll('button:not(:disabled),select:not(:disabled),input:not(:disabled),summary')].filter(el=>el.getClientRects().length),i=a.indexOf(document.activeElement);e.preventDefault();a[(i+(e.shiftKey?-1:1)+a.length)%a.length]?.focus();}},true);
- window.PianoSongGuide={mount,update,close,show,isFocused:()=>focus,exitFocus:()=>setFocus(false),isOpen:()=>open,scoreFingers:()=>!!prefs&&prefs.fingers&&prefs.hint!=='off',reset:()=>{api=null;open=false;focus=false;controls=false;document.body.classList.remove('song-focus','song-focus-controls','song-sheet-open');lastFrame='';},refresh:()=>{lastFrame='';update(liveBeat);}};
+ window.PianoSongGuide={mount,update,close,show,isFocused:()=>focus,enterFocus:()=>setFocus(true),exitFocus:()=>setFocus(false),isOpen:()=>open,scoreFingers:()=>!!prefs&&prefs.fingers&&prefs.hint!=='off',reset:()=>{api=null;open=false;focus=false;controls=false;document.body.classList.remove('song-focus','song-focus-controls','song-sheet-open');lastFrame='';},refresh:()=>{lastFrame='';update(liveBeat);}};
 })();

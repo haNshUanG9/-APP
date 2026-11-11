@@ -1,6 +1,6 @@
 /* Real rendered workflows for the 1.5.9 training and tablet changes. MIDI is simulated. */
 const assert=require('node:assert/strict'),{chromium}=require('playwright'),path=require('path'),fs=require('fs'),{pathToFileURL}=require('url');
-const out=path.resolve(__dirname,'../../deliverables/1.5.9_验证');fs.mkdirSync(out,{recursive:true});
+const out=process.env.PIANO_TEST_OUTPUT_DIR||path.resolve(__dirname,'../../deliverables/1.5.9_验证');fs.mkdirSync(out,{recursive:true});
 (async()=>{const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--disable-audio-output']}),errors=[],network=[],checks=[];try{
 const ctx=await b.newContext({viewport:{width:1280,height:800},hasTouch:true}),p=await ctx.newPage();p.setDefaultTimeout(9000);p.on('pageerror',e=>errors.push(e.stack));p.on('request',r=>{if(/^https?:/.test(r.url()))network.push(r.url());});
 const url=pathToFileURL(path.resolve(__dirname,'../native/assets/index.html')).href;await p.goto(url);await p.waitForFunction(()=>window.PianoReady);

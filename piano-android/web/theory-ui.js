@@ -1,0 +1,30 @@
+/* Lifecycle boundary: visible theory owns MIDI even when a suspended song run exists. */
+(()=>{
+ 'use strict';
+ const H=PianoHost,$=id=>document.getElementById(id),root=$('theoryPage');let page=false,tab='learner',inputMode=null;
+ const modules=()=>[window.PianoTheoryLearner,window.PianoTheoryExplorer];
+ const current=()=>tab==='explorer'?window.PianoTheoryExplorer:window.PianoTheoryLearner;
+ function pause(){for(const m of modules()){m?.pause();const d=m?.root.querySelector('dialog');if(d?.open)d.close();}}
+ function source(){const mode=window.PianoInput?.isMidi()?'midi':'touch';if(inputMode!==mode){inputMode=mode;for(const m of modules())m?.setNativeSource(mode);}return mode;}
+ function sync(){if(!page)return;source();root.dataset.view=tab==='learner'?window.PianoTheoryLearner.state.page:'explorer';root.querySelectorAll('[data-theory-tab]').forEach(b=>b.classList.toggle('selected',b.dataset.theoryTab===(tab==='explorer'?'explorer':window.PianoTheoryLearner.state.page==='evidence'?'evidence':'learner')));const ctx=H.getDB().theory.returnContext,bar=$('theoryReturn');bar.hidden=!ctx;if(ctx){bar.textContent='';const label=document.createElement('span');label.textContent='来自《'+ctx.title+'》 · 第'+ctx.settings.from+'–'+ctx.settings.to+'小节 · '+({left:'左手',right:'右手',both:'双手'}[ctx.settings.hand]||'')+' · ♩'+Math.round(ctx.settings.tempo)+' · 已暂停';const back=document.createElement('button');back.textContent='返回原段';back.onclick=returnSong;bar.append(label);if(Array.isArray(ctx.notes)&&ctx.notes.length){const analyze=document.createElement('button');analyze.textContent='分析原段当前音组';analyze.onclick=()=>{setTab('explorer');PianoTheoryExplorer.loadExample(ctx.notes);};bar.append(analyze);}bar.append(back);}window.dispatchEvent(new Event('pianolayoutchange'));}
+ function setTab(name){pause();tab=name==='explorer'?'explorer':'learner';root.dataset.tab=tab;$('theoryLearner').hidden=tab!=='learner';$('theoryExplorer').hidden=tab!=='explorer';if(name==='evidence')window.PianoTheoryLearner.changePage('evidence');else if(name==='learner')window.PianoTheoryLearner.changePage('home');current()?.render();sync();}
+ function open(conceptId,purpose='lookup'){H.showPage('theoryPage');setTab('learner');if(conceptId)window.PianoTheoryLearner.openConcept(conceptId,purpose);sync();}
+ async function fromSong(purpose='lookup'){const ctx=window.PianoSongs?.captureTheoryContext();if(!ctx)return false;H.getDB().theory.returnContext=ctx;H.save();open('C01',purpose);return true;}
+ async function returnSong(){pause();const ctx=H.getDB().theory.returnContext;if(!ctx){H.showPage('songsPage');return false;}const ok=await window.PianoSongs.restoreTheoryContext(ctx);if(ok||!window.PianoSongs.isActive()){H.getDB().theory.returnContext=null;H.save();}return ok;}
+ function midiEvent(e){if(!page)return;const m=current(),i=m.input;if(e.type==='reset'){if(e.all)m.pause();else i.message('midi/native',[0xb0|(e.channel||0),123,0]);return;}if(H.modalOpen()||window.PianoInput?.panelOpen?.()||document.hidden||root.querySelector('dialog[open]')){m.pause();return;}m.setNativeSource('midi');const port='midi/native',ch=e.channel||0,n=e.note;
+  if(e.type==='on')i.on(port,ch,n,e.velocity||90);else if(e.type==='off')i.off(port,ch,n);else if(e.type==='pedal')i.pedal(port,ch,e.value??e.velocity??0);
+ }
+ const priorBack=window.PianoBack,priorPause=window.PianoPause;
+ window.PianoBack=()=>{if(!page||window.PianoInput?.panelOpen?.()||H.modalOpen())return priorBack?.();const dialog=root.querySelector('dialog[open]');if(dialog){dialog.close();pause();return true;}if(H.getDB().theory.returnContext){returnSong();return true;}if(tab==='explorer'||window.PianoTheoryLearner.state.page!=='home'){setTab('learner');return true;}H.showPage('today');return true;};
+ window.PianoPause=()=>{pause();priorPause?.();};
+ root.querySelectorAll('[data-theory-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.theoryTab));$('theoryStop').onclick=pause;
+ window.PianoTheory={open,openExplorer:()=>{H.showPage('theoryPage');setTab('explorer');},fromSong,returnSong,pause,isActive:()=>page,ownsInput:()=>page,inputSource:source,midiEvent,midiReady:()=>false,autoContinue(){},stopForInputChange:()=>{pause();inputMode=null;sync();},
+  beforeNavigate(name){if(name!=='theoryPage')pause();},navigate(name){page=name==='theoryPage';document.body.classList.toggle('tablet-theory',page);if(page){current()?.render();sync();}},
+  keyboardContext(){if(!page)return null;const m=current(),panel=m.root.querySelector('.dock');if(!panel||panel.classList.contains('hidden'))return null;const keys=panel.querySelector('.keys'),visible=!!keys&&getComputedStyle(panel).display!=='none'&&getComputedStyle(keys).display!=='none'&&keys.getBoundingClientRect().height>0;return {panel,key:'theory',midi:false,collapsed:!visible};},
+  toggleKeys(){const m=current();if(m.input.active==='midi'){m.root.classList.toggle('theory-midi-keys');}else if(tab==='explorer'){const hidden=m.root.dataset.keysHidden==='true';m.state.forceCompactKeys=true;m.state.collapsed=!hidden;m.render();}else m.toggleKeys();sync();},
+  reload(){pause();modules().forEach(m=>m.reload());sync();},getState:()=>({page,tab,source:inputMode,returnContext:H.getDB().theory.returnContext})};
+ window.addEventListener('pianoinputchange',()=>{pause();inputMode=null;sync();});window.addEventListener('pianotheoryview',sync);
+ const observer=new MutationObserver(()=>{if(page){root.querySelectorAll('dialog').forEach(d=>{if(d.open){current().input.cancel();}});}});observer.observe(root,{attributes:true,attributeFilter:['open'],subtree:true});
+ function entries(){for(const id of ['today','topics']){const p=$(id);if(!p||p.hidden||p.querySelector('.theory-entry'))continue;const b=document.createElement('button');b.className='theory-entry';b.textContent=id==='today'?'我忘了 / 查一个乐理知识':'理解音程、和弦与织体';b.onclick=()=>open();(p.querySelector('.page-head .actions')||p.querySelector('.page-head')||p).appendChild(b);}}
+ new MutationObserver(entries).observe(document.querySelector('.main'),{attributes:true,childList:true,subtree:true,attributeFilter:['hidden']});entries();
+})();

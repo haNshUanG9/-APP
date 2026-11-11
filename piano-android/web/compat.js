@@ -1,6 +1,7 @@
 /* Runtime compatibility for older Android WebView; no network polyfill loading. */
 (function () {
   'use strict';
+  if(typeof window.globalThis==='undefined')window.globalThis=window;
   function method(object, key, value) {
     if (!object[key]) Object.defineProperty(object, key, {value:value, configurable:true, writable:true});
   }

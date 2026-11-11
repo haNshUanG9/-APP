@@ -2,19 +2,20 @@
 (()=>{
  'use strict';
  const $=id=>document.getElementById(id),body=document.body,rail=document.querySelector('.app-rail');
- const names={today:'识谱练习室',topics:'专项练习',reading:'短句读谱',foundationPage:'循序课程',rhythmPage:'节奏训练',earPage:'听音训练',songsPage:'曲谱工作区',progressPage:'进步记录',practice:'自由识谱',studyLesson:'正在练习',help:'学习说明',profiles:'音符档案',mistakes:'错题复习',history:'练习记录',result:'练习结果',notePicker:'选择练习音'};
+ const names={theoryPage:'乐理与和弦',today:'识谱练习室',topics:'专项练习',reading:'短句读谱',foundationPage:'循序课程',rhythmPage:'节奏训练',earPage:'听音训练',songsPage:'曲谱工作区',progressPage:'进步记录',practice:'自由识谱',studyLesson:'正在练习',help:'学习说明',profiles:'音符档案',mistakes:'错题复习',history:'练习记录',result:'练习结果',notePicker:'选择练习音'};
  let queued=false,lastSize='',navFocus=null,previewOwner=null;
  const hiddenKeyboards=new Set(),keyboardButton=document.createElement('button');
  keyboardButton.id='workspaceKeyboard';keyboardButton.type='button';keyboardButton.hidden=true;$('workspaceInput').before(keyboardButton);
  function keyboardContext(){
   const screen=body.dataset.screen,reverse=body.classList.contains('midi-reverse');
+  if(screen==='theoryPage')return window.PianoTheory?.keyboardContext?.()||null;
   if(screen==='practice')return {panel:document.querySelector('#practice>.keyboard-area'),key:'practice',midi:body.classList.contains('midi-layout')};
   if(screen==='studyLesson'&&!$('studyLesson').classList.contains('show-report'))return {panel:document.querySelector('#studyLesson .study-keyboard-area'),key:reverse?'reverse':'study',midi:body.classList.contains('midi-layout')&&!reverse};
   if(screen==='foundationPage'&&$('foundationPage').dataset.view==='session')return {panel:document.querySelector('#foundationPage .foundation-keyboard'),key:'foundation',midi:false};
   return null;
  }
  function syncKeyboard(){
-  const context=keyboardContext(),panel=context?.panel,collapsed=!!panel&&!context.midi&&hiddenKeyboards.has(context.key);
+  const context=keyboardContext(),panel=context?.panel;if(context?.key==='theory'){keyboardButton.hidden=false;text(keyboardButton,context.collapsed?'显示键盘':'收起键盘');keyboardButton.setAttribute('aria-expanded',String(!context.collapsed));return;}const collapsed=!!panel&&!context.midi&&hiddenKeyboards.has(context.key);
   if(body.classList.contains('tablet-keyboard-hidden')!==collapsed)body.classList.toggle('tablet-keyboard-hidden',collapsed);
   keyboardButton.hidden=!panel;if(!panel)return;
   if(!panel.id)panel.id=context.key+'KeyboardPanel';
@@ -22,7 +23,7 @@
   text(keyboardButton,visible?'收起键盘':'显示键盘');keyboardButton.setAttribute('aria-expanded',String(visible));keyboardButton.setAttribute('aria-controls',panel.id);keyboardButton.title=visible?'收起屏幕键盘，扩大谱面':'显示屏幕键盘';
  }
  keyboardButton.onclick=()=>{
-  const context=keyboardContext();if(!context?.panel)return;
+  const context=keyboardContext();if(!context?.panel)return;if(context.key==='theory'){window.PianoTheory?.toggleKeys();return;}
   if(context.midi)$('midiKeysToggle').click();
   else{hiddenKeyboards.has(context.key)?hiddenKeyboards.delete(context.key):hiddenKeyboards.add(context.key);syncKeyboard();window.dispatchEvent(new Event('pianolayoutchange'));}
  };
