@@ -42,6 +42,7 @@ public final class MainActivity extends Activity {
     private WebView web;
     private MidiController midi;
     private String pendingExport;
+    private boolean pendingExportBinary;
     private SharedPreferences preferences;
     private boolean leaving, startupDialogShown;
     private String consoleError="", loadError="";
@@ -50,7 +51,7 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         preferences=getSharedPreferences("piano-records",MODE_PRIVATE);
-        if(state!=null&&state.getBoolean("pendingExport"))pendingExport=preferences.getString("pendingExport",null);else preferences.edit().remove("pendingExport").apply();
+        if(state!=null&&state.getBoolean("pendingExport")){pendingExport=preferences.getString("pendingExport",null);pendingExportBinary=state.getBoolean("pendingExportBinary");}else preferences.edit().remove("pendingExport").apply();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if(Build.VERSION.SDK_INT>=33)getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,()->handleBack());
         web=new WebView(this);
@@ -139,7 +140,7 @@ public final class MainActivity extends Activity {
                 if(attempt<9){probeStartup(generation,attempt+1);return;}
                 if(startupDialogShown)return;startupDialogShown=true;
                 PackageInfo engine=WebView.getCurrentWebViewPackage();
-                final String diagnostics="版本 1.6.0 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
+                final String diagnostics="本地测试 1.6.1 · Android "+Build.VERSION.RELEASE+"\n网页引擎："+(engine==null?"未知":engine.versionName)+"\n原因："+(!loadError.isEmpty()?loadError:!consoleError.isEmpty()?consoleError:detail);
                 new AlertDialog.Builder(MainActivity.this).setTitle("应用启动失败").setMessage(diagnostics+"\n\n可复制诊断信息用于排查。")
                     .setNeutralButton("复制诊断",(d,w)->{ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);if(clipboard!=null)clipboard.setPrimaryClip(ClipData.newPlainText("识谱应用启动诊断",diagnostics));toast("诊断信息已复制。");})
                     .setPositiveButton("关闭",null).show();
@@ -151,7 +152,7 @@ public final class MainActivity extends Activity {
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus)immersive();}
     @Override protected void onPause(){if(midi!=null)midi.foreground(false);if(web!=null){web.evaluateJavascript("window.PianoPause&&window.PianoPause()",null);web.onPause();}super.onPause();}
     @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();if(midi!=null)midi.foreground(true);immersive();}
-    @Override protected void onSaveInstanceState(Bundle out){if(pendingExport!=null){preferences.edit().putString("pendingExport",pendingExport).apply();out.putBoolean("pendingExport",true);}super.onSaveInstanceState(out);}
+    @Override protected void onSaveInstanceState(Bundle out){if(pendingExport!=null){preferences.edit().putString("pendingExport",pendingExport).apply();out.putBoolean("pendingExport",true);out.putBoolean("pendingExportBinary",pendingExportBinary);}super.onSaveInstanceState(out);}
     @Override protected void onDestroy(){if(midi!=null){midi.destroy();midi=null;}if(web!=null){web.removeJavascriptInterface("PianoAndroid");web.destroy();web=null;}super.onDestroy();}
     @Override public void onBackPressed(){handleBack();}
     private void handleBack(){
@@ -179,7 +180,13 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public boolean saveData(String json){if(json==null||json.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES)return false;try{new JSONObject(json);return preferences.edit().putString("data",json).commit();}catch(Exception ignored){return false;}}
         @JavascriptInterface public void exportData(String filename,String json){
             if(json==null||json.getBytes(StandardCharsets.UTF_8).length>MAX_BYTES){toast("数据文件过大，无法导出。");return;}
-            runOnUiThread(()->{if(pendingExport!=null){toast("已有导出正在进行。");return;}pendingExport=json;String title=filename==null?"识谱练习数据.json":filename.replaceAll("[/\\\\]","_");Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json").putExtra(Intent.EXTRA_TITLE,title);try{startActivityForResult(intent,EXPORT);}catch(Exception e){pendingExport=null;nativeError("此设备没有可用的文件保存器。");}});
+            runOnUiThread(()->{if(pendingExport!=null){toast("已有导出正在进行。");return;}pendingExport=json;pendingExportBinary=false;String title=filename==null?"识谱练习数据.json":filename.replaceAll("[/\\\\]","_");Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json").putExtra(Intent.EXTRA_TITLE,title);try{startActivityForResult(intent,EXPORT);}catch(Exception e){pendingExport=null;nativeError("此设备没有可用的文件保存器。");}});
+        }
+        @JavascriptInterface public void exportBinary(String filename,String mime,String base64){
+            if(base64==null||base64.length()>((MAX_BYTES+2)/3)*4){toast("二进制文件超过5MB，无法导出。");return;}
+            try{byte[] check=Base64.decode(base64,Base64.NO_WRAP);if(check.length>MAX_BYTES)throw new IllegalArgumentException();}catch(Exception e){toast("导出文件编码无效。");return;}
+            final String safeMime="application/zip".equals(mime)?"application/zip":"application/octet-stream";
+            runOnUiThread(()->{if(pendingExport!=null){toast("已有导出正在进行。");return;}pendingExport=base64;pendingExportBinary=true;String title=filename==null?"乐谱原文件.mscz":filename.replaceAll("[/\\\\]","_");if(title.length()>160)title=title.substring(0,160);Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(safeMime).putExtra(Intent.EXTRA_TITLE,title);try{startActivityForResult(intent,EXPORT);}catch(Exception e){pendingExport=null;pendingExportBinary=false;nativeError("此设备没有可用的文件保存器。");}});
         }
         @JavascriptInterface public void importData(){runOnUiThread(()->{Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");intent.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/json","text/plain","application/octet-stream"});try{startActivityForResult(intent,IMPORT);}catch(Exception e){nativeError("此设备没有可用的文件选择器。");}});}
         @JavascriptInterface public void importScore(){runOnUiThread(()->{Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");try{startActivityForResult(intent,IMPORT_SCORE);}catch(Exception e){nativeError("此设备没有可用的曲谱文件选择器。");}});}
@@ -187,7 +194,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
-        if(result!=RESULT_OK||data==null||data.getData()==null){if(request==EXPORT){pendingExport=null;preferences.edit().remove("pendingExport").apply();}return;}
+        if(result!=RESULT_OK||data==null||data.getData()==null){if(request==EXPORT){pendingExport=null;pendingExportBinary=false;preferences.edit().remove("pendingExport").apply();}return;}
         Uri uri=data.getData();
         if(request==IMPORT_SCORE)new Thread(()->{
             try(InputStream in=getContentResolver().openInputStream(uri)){
@@ -207,9 +214,9 @@ public final class MainActivity extends Activity {
                     }
                     web.evaluateJavascript("(function(){var x=window.PianoScoreTransfer;window.PianoScoreTransfer=null;if(window.PianoSongs)window.PianoSongs.nativeFile(x.name,x.chunks.join(''));})()",null);
                 });
-            }catch(Exception e){toast("导入失败，请选择5MB以内的 MIDI、MusicXML、MXL 或曲谱库备份。");}
+            }catch(Exception e){toast("导入失败，请选择5MB以内的 MSCZ、MSCX、MIDI、MusicXML、MXL 或曲谱库JSON/ZIP备份。");}
         },"piano-score-import").start();
-        if(request==EXPORT){final String json=pendingExport;pendingExport=null;preferences.edit().remove("pendingExport").apply();if(json==null){nativeError("导出已中断，请重试。");return;}new Thread(()->{try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")){if(out==null)throw new IllegalStateException();out.write(json.getBytes(StandardCharsets.UTF_8));toast("数据已保存。");}catch(Exception e){toast("保存失败，请换一个位置后重试。");}},"piano-export").start();}
+        if(request==EXPORT){final String json=pendingExport;final boolean binary=pendingExportBinary;pendingExportBinary=false;pendingExport=null;preferences.edit().remove("pendingExport").apply();if(json==null){nativeError("导出已中断，请重试。");return;}new Thread(()->{try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")){if(out==null)throw new IllegalStateException();byte[] payload=binary?Base64.decode(json,Base64.NO_WRAP):json.getBytes(StandardCharsets.UTF_8);if(payload.length>MAX_BYTES)throw new IllegalStateException();out.write(payload);toast("数据已保存。");}catch(Exception e){toast("保存失败，请换一个位置后重试。");}},"piano-export").start();}
         if(request==IMPORT)new Thread(()->{try(InputStream in=getContentResolver().openInputStream(uri)){if(in==null)throw new IllegalStateException();final String json=new String(readBounded(in,MAX_BYTES),StandardCharsets.UTF_8);new JSONObject(json);runOnUiThread(()->{if(web!=null)web.evaluateJavascript("window.importPianoData("+JSONObject.quote(json)+")",null);});}catch(Exception e){toast("导入失败，请选择5MB以内的练习数据JSON文件。");}},"piano-import").start();
     }
 }

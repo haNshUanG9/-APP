@@ -14,12 +14,12 @@
   const state=MidiCore.tracker();
   const connected=()=>connection.state==='connected';
   const enabled=()=>connected()&&prefs.mode!=='touch';
-  const active=()=>window.PianoTheory?.isActive()||window.PianoEar?.isActive()||H.classicActive()||window.PianoStudy?.isActive()||window.PianoFoundation?.isActive()||window.PianoSongs?.isActive();
-  function owner(){if(window.PianoTheory?.isActive())return window.PianoTheory;if(window.PianoEar?.isActive())return window.PianoEar;if(window.PianoSongs?.isActive())return window.PianoSongs;if(window.PianoFoundation?.isActive())return window.PianoFoundation;if(window.PianoRhythm?.isActive())return window.PianoRhythm;if(window.PianoStudy?.ownsActive())return window.PianoStudy;return H;}
+  const active=()=>window.PianoKeySignature?.ownsInput()||window.PianoTheory?.isActive()||window.PianoEar?.isActive()||H.classicActive()||window.PianoStudy?.isActive()||window.PianoFoundation?.isActive()||window.PianoSongs?.isActive();
+  function owner(){if(window.PianoKeySignature?.ownsInput())return window.PianoKeySignature;if(window.PianoTheory?.isActive())return window.PianoTheory;if(window.PianoEar?.isActive())return window.PianoEar;if(window.PianoSongs?.isActive())return window.PianoSongs;if(window.PianoFoundation?.isActive())return window.PianoFoundation;if(window.PianoRhythm?.isActive())return window.PianoRhythm;if(window.PianoStudy?.ownsActive())return window.PianoStudy;return H;}
   function save(){try{localStorage.setItem('piano-midi-v1',JSON.stringify(prefs));}catch(e){H.notice('输入设置暂时无法保存，本次仍可使用。');}}
   function cancelAuto(){clearTimeout(autoTimer);autoTimer=0;}
   function reset(){owner().midiEvent?.({type:'reset',all:true,channel:0,at:performance.now()});state.reset();cancelAuto();refreshMonitor();}
-  function pause(){cancelAuto();window.PianoTheory?.pause();window.PianoEar?.pause();H.pauseClassic?.('实体琴输入发生变化，确认后点击继续。');window.PianoStudy?.pause();window.PianoSongs?.pause();}
+  function pause(){cancelAuto();window.PianoKeySignature?.pause();window.PianoTheory?.pause();window.PianoEar?.pause();H.pauseClassic?.('实体琴输入发生变化，确认后点击继续。');window.PianoStudy?.pause();window.PianoSongs?.pause();}
   function apply(force=false){
     const next=prefs.mode==='midi'||enabled();
     if(force||!active())layout=next;

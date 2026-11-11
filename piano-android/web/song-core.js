@@ -149,6 +149,7 @@ const SongCore=(()=>{
     if(value.to<value.from)[value.from,value.to]=[value.to,value.from];return value;
   }
   function handOf(song,n,s){const base=song.format==='midi'&&!song.study?.original?(n.pitch<s.split?2:1):n.staff;return s.handMap==='swap'?(base===1?2:1):s.handMap==='right'?1:s.handMap==='left'?2:base;}
+  function physical(notes){const map=new Map();for(const note of notes){const key=Math.round(note.start*1000000)+':'+note.pitch,ids=note.sourceIds||[note.id],sources=note.logicalSources||[{id:note.id,staff:note.staff,sourceStaff:note.sourceStaff,voice:note.voice,sourceIds:[...ids]}];if(map.has(key)){const n=map.get(key);n.sourceIds=[...new Set([...n.sourceIds,...ids])];n.logicalSources.push(...sources);n.duration=Math.max(n.duration,note.duration);n.velocity=Math.max(n.velocity||0,note.velocity||0);}else map.set(key,{...note,sourceIds:[...ids],logicalSources:[...sources]});}return[...map.values()];}
   function prepared(song,raw){
     const s=settings(song,raw);if(s.to<s.from)[s.from,s.to]=[s.to,s.from];const from=song.measures[s.from-1].start,to=song.measures[s.to-1].end;
     const selected=song.notes.filter(n=>s.track==='all'||n.track===s.track).map(n=>{
@@ -158,7 +159,7 @@ const SongCore=(()=>{
       return {...n,start,duration:end-start,staff};
     });
     const all=selected.filter(n=>n.start>=from-EPS&&n.start<to-EPS).map(n=>({...n,beat:n.start-from,measure:song.measures.findIndex(m=>n.start<m.end-EPS)+1}));
-    const notes=all.filter(n=>n.pitch>=21&&n.pitch<=108&&(s.hand==='both'||n.staff===(s.hand==='right'?1:2)));
+    const filtered=all.filter(n=>n.pitch>=21&&n.pitch<=108&&(s.hand==='both'||n.staff===(s.hand==='right'?1:2))),notes=song.format==='mscz'?physical(filtered):filtered;
     const groups=[];
     const grouped=new Map();
     for(const n of notes){const key=Math.round(n.beat*10000);let g=grouped.get(key);if(!g){g={beat:n.beat,sourceBeat:n.start,measure:n.measure,notes:[]};groups.push(g);grouped.set(key,g);}if(!g.notes.some(x=>x.pitch===n.pitch))g.notes.push(n);}
@@ -199,6 +200,7 @@ const SongCore=(()=>{
     return out;
   }
   function toXML(song,raw={}){
+    if(song.format==='mscz')return song.xml;
     const s=settings(song,raw),ex=prepared(song,{...s,from:1,to:song.measures.length});
     const notes=ex.all,sharps=[['C',0],['C',1],['D',0],['D',1],['E',0],['F',0],['F',1],['G',0],['G',1],['A',0],['B',-1],['B',0]];
     let out='<?xml version="1.0" encoding="UTF-8"?><score-partwise version="3.1"><work><work-title>'+esc(song.title)+'</work-title></work><part-list><score-part id="P1"><part-name>Piano</part-name><score-instrument id="I1"><instrument-name>Piano</instrument-name></score-instrument><midi-instrument id="I1"><midi-channel>1</midi-channel><midi-program>1</midi-program></midi-instrument></score-part></part-list><part id="P1">';
@@ -247,12 +249,13 @@ const SongCore=(()=>{
     return check({version:1,title:'第一段音乐 · 四小节练习',format:'midi',notes,tracks:[{id:'piano',name:'钢琴'}],tempos:[{beat:0,bpm:60}],meters:[{beat:0,beats:4,unit:4}],measures:makeMeasures(16,[{beat:0,beats:4,unit:4}]),warnings:[],id:'builtin-first-piece'});
   }
   function fromStored(value){
+    if(value?.format==='mscz')return window.MSCAppCore.fromStored(value);
     if(!value||typeof value.title!=='string'||!Array.isArray(value.notes)||!Array.isArray(value.measures)||!Array.isArray(value.tracks)||!Array.isArray(value.tempos)||!Array.isArray(value.meters))throw Error('曲谱备份结构不完整。');
     if(value.format==='musicxml')return {...parseXML(value.xml,value.title),id:value.id};
     if(value.format!=='midi')throw Error('曲谱格式不受支持。');
     const song=check(JSON.parse(JSON.stringify(value)));if(song.tracks.some(t=>typeof t.id!=='string'||typeof t.name!=='string')||song.notes.some(n=>!song.tracks.some(t=>t.id===n.track)))throw Error('曲谱声部数据无效。');return song;
   }
-  return Object.freeze({parseMidi,parseXML,settings,prepared,handOf,secondsAt,beatAt,evaluate,toXML,demo,median,pitchName,esc,fromStored});
+  return Object.freeze({parseMidi,parseXML,settings,prepared,physical,handOf,secondsAt,beatAt,evaluate,toXML,demo,median,pitchName,esc,fromStored});
 })();
 if(typeof globalThis!=='undefined')globalThis.SongCore=SongCore;
 if(typeof module!=='undefined')module.exports=SongCore;

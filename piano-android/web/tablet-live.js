@@ -2,7 +2,7 @@
 (()=>{
  'use strict';
  const $=id=>document.getElementById(id),body=document.body,rail=document.querySelector('.app-rail');
- const names={theoryPage:'乐理与和弦',today:'识谱练习室',topics:'专项练习',reading:'短句读谱',foundationPage:'循序课程',rhythmPage:'节奏训练',earPage:'听音训练',songsPage:'曲谱工作区',progressPage:'进步记录',practice:'自由识谱',studyLesson:'正在练习',help:'学习说明',profiles:'音符档案',mistakes:'错题复习',history:'练习记录',result:'练习结果',notePicker:'选择练习音'};
+ const names={keySignaturePage:'认音 · 调号影响',theoryPage:'乐理与和弦',today:'识谱练习室',topics:'专项练习',reading:'短句读谱',foundationPage:'循序课程',rhythmPage:'节奏训练',earPage:'听音训练',songsPage:'曲谱工作区',progressPage:'进步记录',practice:'自由识谱',studyLesson:'正在练习',help:'学习说明',profiles:'音符档案',mistakes:'错题复习',history:'练习记录',result:'练习结果',notePicker:'选择练习音'};
  let queued=false,lastSize='',navFocus=null,previewOwner=null;
  const hiddenKeyboards=new Set(),keyboardButton=document.createElement('button');
  keyboardButton.id='workspaceKeyboard';keyboardButton.type='button';keyboardButton.hidden=true;$('workspaceInput').before(keyboardButton);

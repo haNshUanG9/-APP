@@ -1,14 +1,14 @@
 /* Production native bridge is simulated. No USB or Android device claim. */
 const assert=require('node:assert/strict'),fs=require('fs'),path=require('path');
 const {chromium}=require('playwright');
-const out=path.resolve(__dirname,'../../deliverables/学习者乐理_APP融合_2026-11-11/验证');fs.mkdirSync(out,{recursive:true});
+const out=path.resolve(__dirname,'../../deliverables/MSCZ与调号_APP本地测试_1.6.1/evidence/旧乐理回归');fs.mkdirSync(out,{recursive:true});
 (async()=>{
  const b=await chromium.launch({headless:true,executablePath:process.env.PIANO_BROWSER||'C:/Program Files/Google/Chrome/Application/chrome.exe'}),errors=[],checks=[];
  const ctx=await b.newContext({viewport:{width:1280,height:800},hasTouch:true});
  await ctx.addInitScript(()=>{window.__stored='';window.__rejectSave=false;window.PianoAndroid={loadData:()=>window.__stored,saveData(s){if(window.__rejectSave)return false;window.__stored=s;return true;},midiClock:()=>performance.now(),midiStatus(){window.PianoInput?.status({state:'connected',detail:'模拟原生USB',devices:[{id:1,port:0,name:'Simulated Keyboard'}],deviceId:1,port:0,generation:0});}};});
  const p=await ctx.newPage();p.on('pageerror',e=>errors.push(e.stack));p.setDefaultTimeout(8000);const url=require('node:url').pathToFileURL(require('node:path').resolve(__dirname,'../native/assets/index.html')).href;await p.goto(url);await p.waitForFunction(()=>window.PianoReady&&window.PianoTheory);
  try{
- await p.evaluate(()=>PianoTheory.open('I02'));assert.equal(await p.locator('#theoryPage').isVisible(),true);assert.equal(await p.evaluate(()=>PianoHost.getDB().version),6);checks.push('shared page and main v6 state boot');
+ await p.evaluate(()=>PianoTheory.open('I02'));assert.equal(await p.locator('#theoryPage').isVisible(),true);assert.equal(await p.evaluate(()=>PianoHost.getDB().version),7);checks.push('shared page and main v7 state boot');
  // Actual question grade, aid and saved evidence through the production adapter.
  await p.evaluate(()=>{const L=PianoTheoryLearner;L.chooseQuestion('I02','construction',{familiar:true});const q=L.state.session.question;L.setResponse('notes',q.notes.slice());L.setResponse('spelledUpper',q.written[1]);L.submit();});
  assert.equal(await p.evaluate(()=>PianoTheoryLearner.state.session.result.correct),true);assert(await p.evaluate(()=>PianoHost.getDB().theory.learner.events.some(e=>e.type==='attempt')));checks.push('real interval register/spelling grade and main backup evidence');

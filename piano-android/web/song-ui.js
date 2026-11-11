@@ -6,7 +6,7 @@
   let library=[],selected=null,song=null,prefs={},page=false,busy=false,starting=false,run=null,osmd=null,renderGeneration=0,raf=0,audio=null,scheduled=[],dbPromise=null,pressed=new Set(),heldVoices=new Map(),lastCursor=-1;
   const stateKey='piano-song-settings-v1',recordKey='piano-song-reports-v1',learningKey='piano-song-learning-v1',selectionKey='piano-song-last-v1',viewKey='piano-song-view-v1';
   const reading=true;let menuPreview=false;let panelOpen=false,panelFocus=null,panelView='library',guideExercise=null,guideWrong=new Set(),guidePainted=new Set();
-  let libraryReady=Promise.resolve(),theoryRun=null,pendingTheoryRestore=null;
+  let importControl=null;let libraryReady=Promise.resolve(),theoryRun=null,pendingTheoryRestore=null;
   let learning=L.defaults(),noteIndex=new Map(),displayReport=null,practiceOrigin=null;
   try{learning=L.normalize(JSON.parse(localStorage.getItem(learningKey)||'null'));}catch(e){}
   const builtin=()=>SongBank.all(),isBuiltin=id=>builtin().some(s=>s.id===id);
@@ -22,12 +22,14 @@
   const active=()=>!!run&&!run.finished;
   const guided=()=>run&&(run.settings.mode==='beginner'||run.settings.mode==='exam'&&run.settings.examKind==='notes');
   function openDB(){
-    if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{const req=indexedDB.open('piano-score-library',1);req.onupgradeneeded=()=>req.result.createObjectStore('songs',{keyPath:'id'});req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(Error('无法打开本机曲谱库，请导出原文件备份。'));});
+    if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{const req=indexedDB.open('piano-score-library',2);req.onupgradeneeded=()=>{let d=req.result;if(!d.objectStoreNames.contains('songs'))d.createObjectStore('songs',{keyPath:'id'});if(!d.objectStoreNames.contains('sources'))d.createObjectStore('sources',{keyPath:'hash'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(Error('无法打开本机曲谱库，请导出原文件备份。'));});
     return dbPromise;
   }
   async function store(method,value){
     const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction('songs',method==='getAll'?'readonly':'readwrite'),st=tx.objectStore('songs'),req=st[method](value);let result;req.onsuccess=()=>{result=req.result;};tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(Error('本机曲谱保存失败，请检查存储空间。'));tx.onabort=()=>reject(Error('曲谱保存被中断。'));});
   }
+  async function sourceStore(method,value){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction('sources',method==='getAll'?'readonly':'readwrite'),req=tx.objectStore('sources')[method](value);let result;req.onsuccess=()=>result=req.result;tx.oncomplete=()=>resolve(result);tx.onerror=tx.onabort=()=>reject(Error('原谱保存失败'));});}
+  async function storeBundle(songs,sources){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction(['songs','sources'],'readwrite');for(const source of sources)tx.objectStore('sources').put(source);for(const entry of songs)tx.objectStore('songs').put(entry);tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(Error('原谱与版本保存事务失败'));});}
   function settings(){return song?C.settings(song,prefs[selected]||{}):{};}
   function saveSettings(){try{localStorage.setItem(stateKey,JSON.stringify(prefs));}catch(e){H.notice('曲谱设置暂时无法保存，本轮仍可使用。');}}
   function tell(message,bad=false){if($('songFeedback')){$('songFeedback').textContent=message;$('songFeedback').classList.toggle('bad',bad);$('songFeedback').parentElement.classList.toggle('guide-message',bad||/正在准备|已暂停|结束本轮|速度已固定|独立检查/.test(message));}}
@@ -69,7 +71,7 @@
 
   function renderLibrary(){
     const host=$('songLibrary');if(!host)return;
-    host.innerHTML=library.map(s=>`<button class="song-item ${s.id===selected?'selected':''}" data-song="${esc(s.id)}"><span class="song-file-type">${s.study?'练习':s.format==='midi'?'MIDI':'XML'}</span><span><strong>${esc(s.title)}</strong><small>${s.measures.length} 小节 · ${s.notes.length} 个音</small></span></button>`).join('');
+    host.innerHTML=library.map(s=>`<button class="song-item ${s.id===selected?'selected':''}" data-song="${esc(s.id)}"><span class="song-file-type">${s.study?'练习':s.format==='midi'?'MIDI':s.format==='mscz'?'MSC':'XML'}</span><span><strong>${esc(s.title)}</strong><small>${s.measures.length} 小节 · ${s.notes.length} 个音</small></span></button>`).join('');
     host.querySelectorAll('[data-song]').forEach(b=>b.onclick=()=>{choose(b.dataset.song);closePanel();});
   }
   function render(){
@@ -77,9 +79,9 @@
     document.body.classList.toggle('tablet-song',reading);
     document.querySelector('.app-header > .tablet-song-top')?.remove();
     restoreTask();const expanded=$('songSetup')?.open||false,s=settings();
-    $('songsPage').innerHTML=`<div class="tablet-song-top"><button id="songBack" aria-label="返回今日练习">‹</button><button id="songLibraryOpen" aria-label="打开曲库"><span class="song-title-text">${esc(song?.title||'我的曲谱')}</span><span class="song-library-cue">曲库⌄</span></button><span>${esc(MODES[s.mode]?.[0]||'')}</span><button id="songReaderToggle">${reading?'曲目与设置':'进入全幅大谱'}</button></div><div class="song-page-head"><div><span class="eyebrow">MY MUSIC · 离线曲谱室</span><h2>把喜欢的音乐，慢慢弹会。</h2><p>先听一段，再认准，最后跟着拍子连起来。</p></div><div class="actions"><button id="songImport" class="primary">＋ 导入曲谱</button><button id="songBackup">备份曲谱库</button></div></div>
-      <div class="song-layout"><aside class="song-library"><div class="song-library-title"><strong>我的曲谱</strong><small>${library.length} 首 · 保存在本机</small></div><div id="songLibrary"></div><p class="song-library-help">支持 .mid / .midi、.musicxml / .xml / .mxl。MIDI 成谱需整理节奏；MusicXML 更接近原谱。</p><input id="songFile" type="file" accept=".mid,.midi,.musicxml,.xml,.mxl,.json" hidden></aside>
-      <section class="song-workspace"><div class="song-title-row"><div><h3>${esc(song?.title||'正在打开曲谱库…')}</h3><p id="songMeta">${song?song.measures.length+' 小节 · '+song.tracks.length+' 个声部 · '+(song.format==='midi'?'MIDI 整理谱面':'MusicXML 原谱'):'首次使用已准备四小节练习曲。'}</p></div><button id="songDelete" ${!song||isBuiltin(selected)?'hidden':''}>移除</button></div>
+    $('songsPage').innerHTML=`<div class="tablet-song-top"><button id="songBack" aria-label="返回今日练习">‹</button><button id="songLibraryOpen" aria-label="打开曲库"><span class="song-title-text">${esc(song?.title||'我的曲谱')}</span><span class="song-library-cue">曲库⌄</span></button><span>${esc(MODES[s.mode]?.[0]||'')}</span><button id="songReaderToggle">${reading?'曲目与设置':'进入全幅大谱'}</button></div><div class="song-page-head"><div><span class="eyebrow">MY MUSIC · 离线曲谱室</span><h2>把喜欢的音乐，慢慢弹会。</h2><p>先听一段，再认准，最后跟着拍子连起来。</p></div><div class="actions"><button id="songImport" class="primary">＋ 导入曲谱</button><button id="songCancelImport" hidden>取消导入</button><button id="songBackup">备份曲谱库</button><button id="songOriginal">导出原谱</button><button id="songFidelity">保真检查</button></div></div>
+      <div class="song-layout"><aside class="song-library"><div class="song-library-title"><strong>我的曲谱</strong><small>${library.length} 首 · 保存在本机</small></div><div id="songLibrary"></div><p class="song-library-help">支持 .mscz / .mscx、.mid / .midi、.musicxml / .xml / .mxl。MIDI 成谱需整理节奏；MusicXML 更接近原谱。</p><input id="songFile" type="file" accept=".mid,.midi,.musicxml,.xml,.mxl,.mscz,.mscx,.zip,.json" hidden></aside>
+      <section class="song-workspace"><div class="song-title-row"><div><h3>${esc(song?.title||'正在打开曲谱库…')}</h3><p id="songMeta">${song?song.measures.length+' 小节 · '+song.tracks.length+' 个声部 · '+(song.format==='midi'?'MIDI 整理谱面':song.format==='mscz'?'MSC原谱 · '+song.notationIR.summary.heads+'符头 · '+song.msc.sourceHash.slice(0,10):'MusicXML 原谱'):'首次使用已准备四小节练习曲。'}</p></div><button id="songDelete" ${!song||isBuiltin(selected)?'hidden':''}>移除</button></div>
       <div id="songLearning"></div><div class="song-mode-tabs" role="tablist" aria-label="曲谱模式">${Object.entries(MODES).map(([key,v])=>`<button role="tab" aria-selected="${s.mode===key}" data-song-mode="${key}" class="${s.mode===key?'selected':''}"><strong>${v[0]}</strong><small>${v[1]}</small></button>`).join('')}</div>
       <details id="songSetup" class="song-setup"><summary>自由练习设置 · 声部、范围与速度</summary><div class="song-controls" id="songControls">
         <label>声部<select id="songTrack"><option value="all">全部声部</option>${(song?.tracks||[]).map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}</select></label>
@@ -99,7 +101,7 @@
     for(const [id,key]of [['songMetronome','metronome'],['songLoop','loop'],['songAccompany','accompany']])$(id).checked=s[key];
     $('songExam').disabled=s.mode!=='exam';$('songGrid').disabled=song.format!=='midi';$('songSplit').disabled=song.format!=='midi';
     $('songLoop').disabled=s.mode==='exam';$('songAccompany').disabled=s.mode!=='advanced';
-    $('songImport').onclick=importPicker;$('songBackup').onclick=backup;
+    $('songImport').onclick=importPicker;$('songCancelImport').onclick=()=>{importControl?.abort();document.querySelector('.msc-main-dialog[open]')?.mscCancel?.();};$('songBackup').onclick=backup;$('songOriginal').onclick=exportOriginal;$('songFidelity').onclick=fidelity;
     $('songFile').onchange=e=>{const f=e.target.files?.[0];if(f)importFile(f);e.target.value='';};
     $('songDelete').onclick=()=>H.confirm('移除这首曲谱？','只移除本机曲谱库中的副本，原始文件保留。',async()=>{try{await store('delete',selected);library=library.filter(x=>x.id!==selected);choose(library[0].id);}catch(e){tell(e.message,true);}});
     document.querySelectorAll('[data-song-mode]').forEach(b=>b.onclick=()=>change({mode:b.dataset.songMode}));
@@ -144,7 +146,7 @@
   function filteredXML(){
     const s=settings(),doc=new DOMParser().parseFromString(song.format==='midi'?C.toXML(song,s):song.xml,'application/xml');
     // Fingerings remain in the song model for keyboard guidance; keep the reading surface quiet.
-    doc.querySelectorAll('fingering').forEach(n=>n.remove());
+    if(song.format!=='mscz')doc.querySelectorAll('fingering').forEach(n=>n.remove());
     if(s.track!=='all'){doc.querySelectorAll('score-part,part').forEach(p=>{if(p.getAttribute('id')!==s.track)p.remove();});}
     return new XMLSerializer().serializeToString(doc);
   }
@@ -244,14 +246,14 @@
   async function start(){
     if(active()||busy||starting||!osmd)return;
     if(taskFor()?.kind==='route'&&!taskFor().route){beginRoute();tell('下一步已准备好，请确认片段后开始。');return;}
-    if(window.PianoEar?.isActive()||H.classicActive()||window.PianoStudy?.ownsActive()||window.PianoRhythm?.isActive()||window.PianoFoundation?.isActive()){tell('有其他训练正在进行，请先返回并结束，再开始曲谱练习。',true);return;}
-    let ex=C.prepared(song,settings());if(ex.settings.drill==='rhythm')ex=rhythmExercise(ex);if(!ex.groups.length){tell('这个片段与声部没有可练习的音，请调整范围。',true);return;}
+    if(window.PianoKeySignature?.ownsInput()||window.PianoEar?.isActive()||H.classicActive()||window.PianoStudy?.ownsActive()||window.PianoRhythm?.isActive()||window.PianoFoundation?.isActive()){tell('有其他训练正在进行，请先返回并结束，再开始曲谱练习。',true);return;}
+    const restriction=window.MSCAppCore.permit(song,settings());if(restriction){tell(restriction,true);return;}let ex=C.prepared(song,settings());if(ex.settings.drill==='rhythm')ex=rhythmExercise(ex);if(!ex.groups.length){tell('这个片段与声部没有可练习的音，请调整范围。',true);return;}
     starting=true;$('songStart').disabled=true;tell('正在准备钢琴音色…');const gen=renderGeneration,ok=await prepareAudio(song.notes.filter(n=>n.start<ex.from+8&&n.start+n.duration>ex.from).map(n=>n.pitch));starting=false;if(!page||gen!==renderGeneration||document.hidden){if($('songStart'))$('songStart').disabled=active()||!osmd;return;}if(ex.settings.mode==='listen'&&!ok){$('songStart').disabled=false;tell('声音未能启动，请再点播放，或检查系统音量。',true);return;}
     silence();pressed.clear();guideWrong.clear();displayReport=null;markScore(null);$('songReport').innerHTML='';$('songHintCard').hidden=true;document.body.classList.remove('song-hint-open');
     const s=ex.settings;run={settings:{...s},exercise:ex,source:input(),index:0,correct:new Set(),first:new Map(),attempts:[],presses:[],hinted:new Set(),groupResults:[],started:performance.now(),paused:false,interrupted:false,finished:false,assisted:false,elapsed:0,audioScheduled:new Set(),clickScheduled:new Set(),generation:Date.now(),wrong:0,guidedAnswers:[],firstAnswers:new Map(),hintLevels:new Map(),events:[],heldAt:new Map(),task:taskFor()?JSON.parse(JSON.stringify(taskFor())):null};
     run.baseSeconds=C.secondsAt(song,ex.from,s.tempo);run.duration=(C.secondsAt(song,ex.to,s.tempo)-run.baseSeconds)*1000;
     run.countin=s.mode==='listen'||guided()?0:song.measures[s.from-1].beats*60000/s.tempo*4/song.measures[s.from-1].unit;
-    run.playNotes=s.mode==='listen'?song.notes.filter(n=>(s.track==='all'||n.track===s.track)&&(s.hand==='both'||C.handOf(song,n,s)===(s.hand==='right'?1:2))&&n.start<ex.to&&n.start+n.duration>ex.from).map(n=>({...n,ms:(C.secondsAt(song,Math.max(n.start,ex.from),s.tempo)-run.baseSeconds)*1000,dur:C.secondsAt(song,Math.min(n.start+n.duration,ex.to),s.tempo)-C.secondsAt(song,Math.max(n.start,ex.from),s.tempo)})):
+    run.playNotes=s.mode==='listen'?(song.format==='mscz'?C.physical:list=>list)(song.notes.filter(n=>(s.track==='all'||n.track===s.track)&&(s.hand==='both'||C.handOf(song,n,s)===(s.hand==='right'?1:2))&&n.start<ex.to&&n.start+n.duration>ex.from)).map(n=>({...n,ms:(C.secondsAt(song,Math.max(n.start,ex.from),s.tempo)-run.baseSeconds)*1000,dur:C.secondsAt(song,Math.min(n.start+n.duration,ex.to),s.tempo)-C.secondsAt(song,Math.max(n.start,ex.from),s.tempo)})):
       s.mode==='advanced'&&s.accompany&&s.hand!=='both'?ex.all.filter(n=>n.staff===(s.hand==='right'?2:1)).map(n=>({...n,ms:(C.secondsAt(song,n.start,s.tempo)-run.baseSeconds)*1000,dur:C.secondsAt(song,n.start+n.duration,s.tempo)-C.secondsAt(song,n.start,s.tempo)})):[];
     setLocked(true);moveCursor(ex.from,true);window.PianoInput?.sync();
     renderLearning();if(guided())showGroup();else {tell(s.mode==='listen'?'欣赏播放 · 离线钢琴采样':ok?'先听预备拍，再开始弹。':'声音未启用；先暂停检查声音，再跟拍。');tick();}
@@ -448,13 +450,15 @@
   }
   async function importPicker(){if(active())return;if(window.PianoAndroid?.importScore){window.PianoAndroid.importScore();return;}$('songFile').click();}
   async function importFile(file){
-    if(busy||active())return;busy=true;tell('正在读取并检查曲谱…');
+    if(busy||active())return;busy=true;importControl=new AbortController();const signal=importControl.signal;if($('songCancelImport'))$('songCancelImport').hidden=false;tell('正在读取并检查曲谱…');
     try{
       if(file.size>5000000)throw Error('请选择 5MB 以内的曲谱。');const bytes=new Uint8Array(await file.arrayBuffer());let value;
+      if(/\.(mscz|mscx)$/i.test(file.name)){await importMSC(file,bytes,signal);return;}
+      if(/\.zip$/i.test(file.name)){await restoreZIP(bytes,signal);return;}
       if(/\.json$/i.test(file.name)){
         const backup=JSON.parse(new TextDecoder().decode(bytes));if(backup.type!=='piano-song-library'||![1,2].includes(backup.version)||!Array.isArray(backup.songs)||backup.songs.length>40)throw Error('这不是本应用的曲谱库备份。');
         const parsed=[];for(const entry of backup.songs){value=C.fromStored(entry);value.id=String(entry.id||'s'+Date.now()).slice(0,80);if(isBuiltin(value.id))throw Error('备份包含与内置练习重复的编号。');parsed.push(value);}
-        for(const v of parsed)await store('put',v);
+        await storeBundle(parsed,[]);
         library=[...builtin(),...(await store('getAll')).filter(s=>!isBuiltin(s.id))];
         if(backup.records&&Array.isArray(backup.records))records=backup.records.filter(validReport).slice(0,40);
         if(backup.learning)learning=L.normalize(backup.learning);saveLearning();
@@ -475,17 +479,18 @@
       }
       value.id='song-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
       await store('put',value);library.push(value);choose(value.id);tell('导入完成。先确认谱面与声部，默认从前两小节练起。');
-    }catch(e){tell('导入失败：'+(e.message||e),true);}finally{busy=false;}
+    }catch(e){tell('导入失败：'+(e.message||e),true);}finally{busy=false;importControl=null;if($('songCancelImport'))$('songCancelImport').hidden=true;}
   }
-  async function backup(){
-    if(active())return;const text=JSON.stringify({type:'piano-song-library',version:2,songs:library.filter(s=>!isBuiltin(s.id)),prefs,records,learning});
-    if(new Blob([text]).size>5000000){tell('曲谱库备份超过 5MB，请保留各首原文件，或先移除不使用的曲谱。',true);return;}
-    if(window.PianoAndroid?.exportData)window.PianoAndroid.exportData('曲谱库与练习记录.json',text);
-    else {const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.href=url;a.download='曲谱库与练习记录.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);}
-  }
+  async function exportBytes(bytes,name,mime){if(bytes.length>5000000)throw Error('导出超过5MB预算');if(window.PianoAndroid?.exportBinary){let chunks=[];for(let i=0;i<bytes.length;i+=24576)chunks.push(String.fromCharCode(...bytes.subarray(i,i+24576)));window.PianoAndroid.exportBinary(name,mime,btoa(chunks.join('')));}else{const a=document.createElement('a'),url=URL.createObjectURL(new Blob([bytes],{type:mime}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
+  async function importMSC(file,bytes,signal){let hash=await MSCArchive.hash(bytes),path=file.name,format=/\.mscx$/i.test(file.name)?'mscx':'mscz',xml;if(format==='mscz'){let inspected=await MSCArchive.inspect(bytes,{signal});if(inspected.candidates.length===1)path=inspected.candidates[0].name;else path=await chooseMain(inspected.candidates);if(!path)return;xml=MSCArchive.decode(await inspected.archive.read(path,{signal}));}else xml=MSCArchive.decode(bytes);let same=library.find(s=>s.msc?.originalName===file.name),meta={sourceHash:hash,mainPath:path,sourceFormat:format,originalName:file.name,logicalSongId:same?.msc.logicalSongId},value=MSCAppCore.create(xml,meta),existing=library.find(s=>s.id===value.id);if(existing){choose(existing.id);tell('相同原文件已存在，已回到原版本。');return;}await new Promise(r=>setTimeout(r,0));if(signal?.aborted)throw new DOMException('导入已取消','AbortError');let source={hash,name:file.name,format,bytes:bytes.buffer,importedAt:Date.now()};await storeBundle([value],[source]);library.push(value);choose(value.id);tell('MSC原谱已保存 · '+value.notationIR.summary.heads+'符头。用保真检查定位局部限制。');}
+  async function chooseMain(candidates){return new Promise(resolve=>{let d=document.createElement('dialog');d.className='msc-main-dialog';let h=document.createElement('h2');h.textContent='请选择主乐谱';let select=document.createElement('select');for(let c of candidates)select.add(new Option(c.name,c.name));let yes=document.createElement('button');yes.textContent='读取这份主谱';let no=document.createElement('button');no.textContent='取消';let done=v=>{d.close();d.remove();resolve(v);};d.dataset.mscDialog='main';d.mscCancel=()=>done(null);yes.onclick=()=>done(select.value);no.onclick=()=>done(null);d.oncancel=e=>{e.preventDefault();done(null);};d.append(h,select,yes,no);document.body.append(d);d.showModal();});}
+  async function exportOriginal(){if(!song?.msc)return tell('此功能用于保留了原文件的MSC谱。');try{let source=(await sourceStore('getAll')).find(s=>s.hash===song.msc.sourceHash);if(!source)throw Error('原谱缺失，请从原文件重新导入');await exportBytes(new Uint8Array(source.bytes),source.name,'application/octet-stream');}catch(e){tell(e.message,true);}}
+  function fidelity(){if(active())pause();silence();if(!song?.msc)return tell('当前曲谱沿用原有MIDI/MusicXML读取规则。');let d=document.createElement('dialog');d.className='msc-fidelity-dialog';d.mscCancel=()=>{d.close();d.remove();};let h=document.createElement('h2');h.textContent='MSC保真检查';let p=document.createElement('p');p.textContent=song.notationIR.summary.heads+'符头 / '+song.notationIR.summary.rests+'休止 · 原文件SHA-256 '+song.msc.sourceHash+'。原谱、显示与练习事件分别保留；装饰音不计播放/判分。';d.append(h,p);for(let issue of song.notationIR.diagnostics){let b=document.createElement('button');b.textContent='第'+issue.measure+'—'+issue.endMeasure+'小节：'+issue.message;b.onclick=()=>{d.close();d.remove();closePanel();change({from:issue.measure,to:Math.max(issue.measure,issue.endMeasure)});moveCursor(song.measures[issue.measure-1].start,true);};d.append(b);}let close=document.createElement('button');close.textContent='返回';close.onclick=()=>{d.close();d.remove();};d.append(close);document.body.append(d);d.showModal();}
+  async function restoreZIP(bytes,signal){let archive=MSCArchive.open(bytes),manifest=JSON.parse(MSCArchive.decode(await archive.read('manifest.json',{signal}))),parsed=await MSCAppCore.restoreManifest(manifest,archive,{signal});if(parsed.songs.some(s=>isBuiltin(s.id)))throw Error('备份编号与内置曲库冲突');if(signal?.aborted)throw new DOMException('恢复已取消','AbortError');await storeBundle(parsed.songs,parsed.sources);library=[...builtin(),...(await store('getAll')).filter(s=>!isBuiltin(s.id)).map(C.fromStored)];if(Array.isArray(manifest.records))records=manifest.records.filter(validReport).slice(-40);if(manifest.learning)learning=L.normalize(manifest.learning);if(manifest.prefs&&typeof manifest.prefs==='object'&&!Array.isArray(manifest.prefs))prefs=manifest.prefs;saveLearning();saveSettings();localStorage.setItem(recordKey,JSON.stringify(records));choose(parsed.songs[0]?.id||library[0].id);tell('v3曲库、原谱与版本已恢复；原有认音/乐理记录保留。');}
+  async function backup(){if(active())return;try{let own=library.filter(s=>!isBuiltin(s.id)),needed=new Set(own.map(s=>s.msc?.sourceHash).filter(Boolean)),sources=(await sourceStore('getAll')).filter(s=>needed.has(s.hash));if(sources.length!==needed.size)throw Error('有原文件缺失，暂不能生成完整备份');let bytes=await MSCAppCore.backup({songs:own,prefs,records,learning},sources);await exportBytes(bytes,'曲谱库与原谱_v3.zip','application/zip');tell('备份已生成，包含原文件、版本与练习记录。');}catch(e){tell(e.message,true);}}
   async function nativeFile(name,base64){const raw=atob(base64),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));await importFile(new File([bytes],name));}
   const back=window.PianoBack,pauseApp=window.PianoPause;
-  window.PianoBack=()=>{if(!page||window.PianoInput?.panelOpen?.())return back?.();if(window.PianoScoreLayout.isPicking()){window.PianoScoreLayout.endRange();return true;}if(window.PianoSongGuide?.isOpen()){window.PianoSongGuide.close();return true;}if(panelOpen){closePanel();return true;}if(window.PianoSongGuide?.isFocused()){window.PianoSongGuide.exitFocus();return true;}if(active()){pause();H.confirm('结束本轮并返回？','已经尝试的音保留记录，未练到的后续音不计错。',()=>{finish(false,false);H.showPage('today');});return true;}H.showPage('today');return true;};
+  window.PianoBack=()=>{const d=document.querySelector('.msc-main-dialog[open],.msc-fidelity-dialog[open]');if(d){d.mscCancel?.();return true;}if(!page||window.PianoInput?.panelOpen?.())return back?.();if(window.PianoScoreLayout.isPicking()){window.PianoScoreLayout.endRange();return true;}if(window.PianoSongGuide?.isOpen()){window.PianoSongGuide.close();return true;}if(panelOpen){closePanel();return true;}if(window.PianoSongGuide?.isFocused()){window.PianoSongGuide.exitFocus();return true;}if(active()){pause();H.confirm('结束本轮并返回？','已经尝试的音保留记录，未练到的后续音不计错。',()=>{finish(false,false);H.showPage('today');});return true;}H.showPage('today');return true;};
   window.PianoPause=()=>{pause();silence();pauseApp?.();};
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
   window.addEventListener('pagehide',saveView);
@@ -497,10 +502,10 @@
     toggleReading,closePanel,refreshScore:()=>page&&renderScore(),
     isActive:active,inputSource:()=>run?.source||input(),midiEvent:e=>receive(e,'midi'),midiReady:()=>false,pause,stopForInputChange:pause,
     beforeOtherTraining:callback=>{if(!active())return false;pause();H.confirm('结束曲谱练习并开始新训练？','本轮已经尝试的音会保存。',()=>{finish(false,false);callback();});return true;},
-    beforeNavigate:name=>{if(name!=='songsPage'){window.PianoScoreLayout.endRange();closePanel();pause();document.querySelector('.app-header > .tablet-song-top')?.remove();silence();window.PianoSongGuide?.reset();renderGeneration++;document.body.classList.remove('song-running','song-hint-open','tablet-song','tablet-song-keys','tablet-song-playing');}},
+    beforeNavigate:name=>{if(name!=='songsPage'){importControl?.abort();document.querySelector('.msc-main-dialog[open]')?.mscCancel?.();window.PianoScoreLayout.endRange();closePanel();pause();document.querySelector('.app-header > .tablet-song-top')?.remove();silence();window.PianoSongGuide?.reset();renderGeneration++;document.body.classList.remove('song-running','song-hint-open','tablet-song','tablet-song-keys','tablet-song-playing');}},
     navigate:name=>{page=name==='songsPage';if(!page)renderHome(name);if(page){$('modeTitle').textContent='我的曲谱 · 导入、听、练与考核';render();if(active()){setLocked(true);$('songPause').textContent='继续';tell('本轮已暂停，点击继续。');}}},
     previewNavigation,reports:()=>records.slice(),openReport:id=>{const r=records.find(x=>x.id===id);if(!r||!library.some(s=>s.id===r.songId))return;choose(r.songId);H.showPage('songsPage');showReport(r);},
-    importFile,nativeFile,getState:()=>({song,settings:settings(),run,library:library.map(s=>({id:s.id,title:s.title})),records,learning,task:taskFor(),layout:window.PianoScoreLayout.state(),markedNotes:document.querySelectorAll('[data-song-mark]').length,cursorBeat:osmd?.cursor?osmd.cursor.Iterator.CurrentSourceTimestamp.RealValue*4:null}),
+    importFile,nativeFile,backup,exportOriginal,fidelity,ready:()=>libraryReady,sourceRecords:()=>sourceStore('getAll'),getState:()=>({song,settings:settings(),run,library:library.map(s=>({id:s.id,title:s.title})),records,learning,task:taskFor(),layout:window.PianoScoreLayout.state(),markedNotes:document.querySelectorAll('[data-song-mark]').length,cursorBeat:osmd?.cursor?osmd.cursor.Iterator.CurrentSourceTimestamp.RealValue*4:null}),
     loadDemo:()=>choose('builtin-first-piece'),choose,renderHome,continueRoute:beginRoute,review:key=>openReview(key)
   };
   library=builtin();selected=library[0].id;song=library[0];
@@ -509,5 +514,5 @@
     return !!(r&&typeof r.id==='string'&&typeof r.title==='string'&&typeof r.songId==='string'&&Number.isFinite(r.at)&&s&&MODES[s.mode]&&['both','left','right'].includes(s.hand)&&Number.isFinite(s.tempo)&&s.tempo>0&&Number.isInteger(s.from)&&Number.isInteger(s.to)&&a&&Array.isArray(a.answers)&&a.answers.every(x=>x&&Number.isInteger(x.measure)&&typeof x.correct==='boolean')&&Number.isFinite(a.score)&&a.score>=0&&a.score<=100&&Number.isFinite(a.total)&&Number.isFinite(a.correct)&&Array.isArray(a.extras));
   }
   records=records.filter(validReport);
-  libraryReady=store('getAll').then(saved=>{library=[...builtin(),...saved.filter(s=>!isBuiltin(s.id)).map(C.fromStored)];if(!active()){let last;try{last=localStorage.getItem(selectionKey);}catch(e){}const preferred=learning.current[input()]?.songId||last;if(library.some(s=>s.id===preferred)){selected=preferred;song=library.find(s=>s.id===preferred);lastCursor=viewBeat();}if(page)render();}renderHome(document.body.dataset.screen);}).catch(e=>H.notice(e.message));
+  libraryReady=Promise.all([store('getAll'),sourceStore('getAll')]).then(async([saved,sources])=>{let rebuilt=[];for(let entry of saved.filter(s=>!isBuiltin(s.id))){try{if(entry.format==='mscz'){let source=sources.find(s=>s.hash===entry.msc?.sourceHash);if(!source)throw Error('原文件缺失');let xml=await MSCAppCore.readSource(source,entry.msc.mainPath),value=MSCAppCore.create(xml,{...entry.msc,id:entry.id});rebuilt.push(value);await store('put',value);}else rebuilt.push(C.fromStored(entry));}catch(e){H.notice('曲谱《'+String(entry.title||'未命名')+'》未能重建：'+e.message+'。原记录未删除，可从原文件重导。');}}library=[...builtin(),...rebuilt];if(!active()){let last;try{last=localStorage.getItem(selectionKey);}catch(e){}const preferred=learning.current[input()]?.songId||last;if(library.some(s=>s.id===preferred)){selected=preferred;song=library.find(s=>s.id===preferred);lastCursor=viewBeat();}if(page)render();}renderHome(document.body.dataset.screen);}).catch(e=>H.notice(e.message));
 })();
